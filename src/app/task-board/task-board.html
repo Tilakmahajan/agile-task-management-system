@@ -1,56 +1,326 @@
-<div class="min-h-screen bg-slate-100 p-6">
+<div class="task-board-bg">
+  <div class="task-board-content min-h-screen px-3 py-6 sm:px-4 sm:py-8 text-neutral-800">
+    <div class="max-w-6xl mx-auto space-y-6 sm:space-y-8">
+      <!-- Top bar / Header – responsive -->
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div class="min-w-0">
+          <div class="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-3 py-1 text-xs font-medium tracking-wide text-neutral-600 shadow-sm backdrop-blur-sm">
+            <span class="h-1.5 w-1.5 rounded-full bg-neutral-400"></span>
+            Agile Sprint Workspace
+          </div>
+          <h1 class="mt-2 sm:mt-3 text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl md:text-4xl truncate">
+            Agile Task Board
+          </h1>
+          <p class="mt-1 sm:mt-2 max-w-xl text-xs sm:text-sm text-neutral-600 line-clamp-2 sm:line-clamp-none">
+            Visualise work across stages, keep your team aligned, and move tasks smoothly from idea to done. Drag cards between columns to update status.
+          </p>
+        </div>
 
-  <!-- Header -->
-  <div class="max-w-6xl mx-auto mb-6">
-    <h1 class="text-3xl font-bold text-slate-800">
-      Agile Task Board
-    </h1>
-    <p class="text-slate-500 mt-1">
-      Manage tasks across different stages of development
-    </p>
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            class="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white/80 px-3 py-2 sm:px-4 text-xs sm:text-sm font-medium text-neutral-700 shadow-sm backdrop-blur-sm transition hover:bg-white hover:border-neutral-400 min-h-[44px] touch-manipulation"
+            type="button"
+          >
+            <span class="inline-flex h-5 w-5 items-center justify-center rounded-full border border-neutral-300 text-[10px] font-semibold text-neutral-600">
+              i
+            </span>
+            Sprint overview
+          </button>
+          <button
+            (click)="openAddTask('todo')"
+            class="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-3 py-2 sm:px-4 text-xs sm:text-sm font-semibold text-white shadow-md transition hover:bg-neutral-800 min-h-[44px] touch-manipulation"
+            type="button"
+          >
+            <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[11px] font-semibold text-white">
+              +
+            </span>
+            Add task
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats row – 1 col on small, 3 on md+ -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div class="rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
+          <div class="flex items-center justify-between text-xs font-medium text-neutral-500">
+            <span>Open tasks</span>
+            <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600">Backlog size</span>
+          </div>
+          <div class="mt-2 flex items-end gap-2">
+            <p class="text-2xl font-semibold text-neutral-900">{{ todoTasks.length }}</p>
+            <p class="pb-0.5 text-xs text-neutral-500">items</p>
+          </div>
+          <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-200">
+            <div class="h-full rounded-full bg-neutral-500 transition-all duration-300" [style.width.%]="(todoTasks.length / (todoTasks.length + inProgressTasks.length + doneTasks.length || 1)) * 100"></div>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
+          <div class="flex items-center justify-between text-xs font-medium text-neutral-500">
+            <span>In progress</span>
+            <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600">Flow load</span>
+          </div>
+          <div class="mt-2 flex items-end gap-2">
+            <p class="text-2xl font-semibold text-neutral-900">{{ inProgressTasks.length }}</p>
+            <p class="pb-0.5 text-xs text-neutral-500">active</p>
+          </div>
+          <div class="mt-2 flex items-center gap-2 text-xs">
+            <span class="h-2 w-2 rounded-full bg-neutral-400"></span>
+            <span class="text-neutral-500">Healthy work-in-progress</span>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
+          <div class="flex items-center justify-between text-xs font-medium text-neutral-500">
+            <span>Done this sprint</span>
+            <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-700">Throughput</span>
+          </div>
+          <div class="mt-2 flex items-end gap-2">
+            <p class="text-2xl font-semibold text-neutral-900">{{ doneTasks.length }}</p>
+            <p class="pb-0.5 text-xs text-neutral-500">completed</p>
+          </div>
+          <div class="mt-2 flex items-center gap-3 text-[11px] text-neutral-700">
+            <span class="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5">
+              <span class="h-1.5 w-1.5 rounded-full bg-neutral-500"></span>
+              On track
+            </span>
+            <span class="text-neutral-500">Keep shipping small, frequent updates.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Board – single column on mobile, 3 on md+ -->
+      <div class="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-3">
+        <!-- TO DO -->
+        <section
+          class="flex min-h-[220px] sm:min-h-[260px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-3 sm:p-4 shadow-sm backdrop-blur-sm"
+          aria-label="To Do column"
+          (dragover)="onDragOver($event)"
+          (drop)="onDrop('todo', $event)"
+        >
+          <header class="flex items-center justify-between border-b border-neutral-100 pb-2 sm:pb-3">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="h-1 w-6 rounded-full bg-neutral-400 shrink-0"></span>
+              <h2 class="text-xs sm:text-sm font-semibold uppercase tracking-[0.12em] text-neutral-600 truncate">
+                To Do
+              </h2>
+            </div>
+            <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600 shrink-0">
+              {{ todoTasks.length }} tasks
+            </span>
+          </header>
+
+          <div class="mt-1 space-y-3 min-h-[80px] sm:min-h-[120px]">
+            @for (task of todoTasks; track task.id) {
+              <article
+                class="task-card group cursor-grab active:cursor-grabbing rounded-lg border border-neutral-200 bg-neutral-50/50 p-3 transition hover:border-neutral-300 hover:shadow-sm"
+                draggable="true"
+                (dragstart)="onDragStart('todo', $index, $event)"
+                (dragend)="onDragEnd()"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <h3 class="text-sm font-medium text-neutral-900 flex-1 min-w-0 truncate">
+                    {{ task.title }}
+                  </h3>
+                  <span class="rounded-md border border-neutral-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-neutral-700 shrink-0">
+                    {{ task.priority }}
+                  </span>
+                </div>
+                <p class="mt-1 text-xs text-neutral-500 line-clamp-2">
+                  {{ task.description }}
+                </p>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-neutral-500 flex-wrap gap-1">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-neutral-200 bg-white text-[11px] font-semibold text-neutral-700 shrink-0">
+                      {{ task.label }}
+                    </span>
+                    <span class="truncate">{{ task.meta }}</span>
+                  </div>
+                  <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-neutral-600 shrink-0">
+                    {{ task.statusLabel }}
+                  </span>
+                </div>
+                <div class="task-card-actions mt-3 pt-2 border-t border-neutral-100 flex flex-wrap gap-2" (mousedown)="$event.stopPropagation()">
+                  <button type="button" class="edit-btn rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 min-h-[40px] touch-manipulation" (click)="openEditTask(task, 'todo', $index); $event.stopPropagation()" title="Edit task">Edit</button>
+                  <button type="button" class="delete-btn rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-50 min-h-[40px] touch-manipulation" (click)="deleteTask('todo', $index); $event.stopPropagation()" title="Delete task">Delete</button>
+                </div>
+              </article>
+            }
+          </div>
+        </section>
+
+        <!-- IN PROGRESS -->
+        <section
+          class="flex min-h-[220px] sm:min-h-[260px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-3 sm:p-4 shadow-sm backdrop-blur-sm"
+          aria-label="In Progress column"
+          (dragover)="onDragOver($event)"
+          (drop)="onDrop('inProgress', $event)"
+        >
+          <header class="flex items-center justify-between border-b border-neutral-100 pb-2 sm:pb-3">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="h-1 w-6 rounded-full bg-neutral-500 shrink-0"></span>
+              <h2 class="text-xs sm:text-sm font-semibold uppercase tracking-[0.12em] text-neutral-600 truncate">
+                In Progress
+              </h2>
+            </div>
+            <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600 shrink-0">
+              {{ inProgressTasks.length }} task(s)
+            </span>
+          </header>
+
+          <div class="mt-1 space-y-3 min-h-[80px] sm:min-h-[120px]">
+            @for (task of inProgressTasks; track task.id) {
+              <article
+                class="task-card group cursor-grab active:cursor-grabbing rounded-lg border border-neutral-300 bg-neutral-50/50 p-3 shadow-sm transition hover:border-neutral-400"
+                draggable="true"
+                (dragstart)="onDragStart('inProgress', $index, $event)"
+                (dragend)="onDragEnd()"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <h3 class="text-sm font-medium text-neutral-900 flex-1 min-w-0 truncate">
+                    {{ task.title }}
+                  </h3>
+                  <span class="rounded-md border border-neutral-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-neutral-700 shrink-0">
+                    In progress
+                  </span>
+                </div>
+                <p class="mt-1 text-xs text-neutral-500 line-clamp-2">
+                  {{ task.description }}
+                </p>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-neutral-500 flex-wrap gap-1">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-neutral-200 bg-white text-[11px] font-semibold text-neutral-700 shrink-0">
+                      {{ task.label }}
+                    </span>
+                    <span class="truncate">{{ task.meta }}</span>
+                  </div>
+                  <span class="rounded-md bg-neutral-200 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-neutral-700 shrink-0">
+                    {{ task.statusLabel }}
+                  </span>
+                </div>
+                <div class="task-card-actions mt-3 pt-2 border-t border-neutral-100 flex flex-wrap gap-2" (mousedown)="$event.stopPropagation()">
+                  <button type="button" class="edit-btn rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 min-h-[40px] touch-manipulation" (click)="openEditTask(task, 'inProgress', $index); $event.stopPropagation()" title="Edit task">Edit</button>
+                  <button type="button" class="delete-btn rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-50 min-h-[40px] touch-manipulation" (click)="deleteTask('inProgress', $index); $event.stopPropagation()" title="Delete task">Delete</button>
+                </div>
+              </article>
+            }
+          </div>
+        </section>
+
+        <!-- DONE -->
+        <section
+          class="flex min-h-[220px] sm:min-h-[260px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-3 sm:p-4 shadow-sm backdrop-blur-sm"
+          aria-label="Done column"
+          (dragover)="onDragOver($event)"
+          (drop)="onDrop('done', $event)"
+        >
+          <header class="flex items-center justify-between border-b border-neutral-100 pb-2 sm:pb-3">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="h-1 w-6 rounded-full bg-neutral-600 shrink-0"></span>
+              <h2 class="text-xs sm:text-sm font-semibold uppercase tracking-[0.12em] text-neutral-600 truncate">
+                Done
+              </h2>
+            </div>
+            <span class="rounded-md bg-neutral-200 px-2 py-0.5 text-[11px] font-medium text-neutral-800 shrink-0">
+              Ship it
+            </span>
+          </header>
+
+          <div class="mt-1 space-y-3 min-h-[80px] sm:min-h-[120px]">
+            @for (task of doneTasks; track task.id) {
+              <article
+                class="task-card group cursor-grab active:cursor-grabbing rounded-lg border border-neutral-300 bg-neutral-50/50 p-3 shadow-sm"
+                draggable="true"
+                (dragstart)="onDragStart('done', $index, $event)"
+                (dragend)="onDragEnd()"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <h3 class="text-sm font-medium text-neutral-900 flex-1 min-w-0 truncate">
+                    {{ task.title }}
+                  </h3>
+                  <span class="rounded-md border border-neutral-400 bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold text-neutral-800 shrink-0">
+                    Completed
+                  </span>
+                </div>
+                <p class="mt-1 text-xs text-neutral-500 line-clamp-2">
+                  {{ task.description }}
+                </p>
+                <div class="mt-2 flex items-center justify-between text-[11px] text-neutral-500 flex-wrap gap-1">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-neutral-300 bg-neutral-100 text-[11px] font-semibold text-neutral-800 shrink-0">
+                      {{ task.label }}
+                    </span>
+                    <span class="truncate">{{ task.meta }}</span>
+                  </div>
+                  <span class="rounded-md bg-neutral-200 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-neutral-800 shrink-0">
+                    {{ task.statusLabel }}
+                  </span>
+                </div>
+                <div class="task-card-actions mt-3 pt-2 border-t border-neutral-100 flex flex-wrap gap-2" (mousedown)="$event.stopPropagation()">
+                  <button type="button" class="edit-btn rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 min-h-[40px] touch-manipulation" (click)="openEditTask(task, 'done', $index); $event.stopPropagation()" title="Edit task">Edit</button>
+                  <button type="button" class="delete-btn rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-50 min-h-[40px] touch-manipulation" (click)="deleteTask('done', $index); $event.stopPropagation()" title="Delete task">Delete</button>
+                </div>
+              </article>
+            }
+          </div>
+        </section>
+      </div>
+    </div>
   </div>
 
-  <!-- Board -->
-  <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-
-    <!-- TO DO -->
-    <div class="bg-white rounded-xl shadow-sm">
-      <div class="border-b px-4 py-3 font-semibold text-slate-700">
-        To Do
-      </div>
-      <div class="p-4 space-y-3">
-        <div class="bg-slate-50 rounded-lg p-3 shadow-sm">
-          Design UI
-        </div>
-        <div class="bg-slate-50 rounded-lg p-3 shadow-sm">
-          Create components
-        </div>
+  <!-- Task form modal (Add / Edit) – responsive, scrollable on small screens -->
+  @if (showTaskForm) {
+    <div class="task-form-overlay" (click)="cancelForm()">
+      <div class="task-form-modal" (click)="$event.stopPropagation()">
+        <h3 class="text-base sm:text-lg font-semibold text-neutral-900">
+          {{ isEditMode ? 'Edit task' : 'New task' }}
+        </h3>
+        <form (ngSubmit)="saveTask()" class="mt-4 space-y-3">
+          <div>
+            <label for="task-title" class="block text-xs font-medium text-neutral-600">Title</label>
+            <input id="task-title" type="text" [(ngModel)]="formTask.title" name="title" required
+              class="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 min-h-[44px]"
+              placeholder="Task title" />
+          </div>
+          <div>
+            <label for="task-desc" class="block text-xs font-medium text-neutral-600">Description</label>
+            <textarea id="task-desc" [(ngModel)]="formTask.description" name="description" rows="3"
+              class="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+              placeholder="Describe the task"></textarea>
+          </div>
+          <div>
+            <label for="task-priority" class="block text-xs font-medium text-neutral-600">Priority</label>
+            <select id="task-priority" [(ngModel)]="formTask.priority" name="priority"
+              class="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 min-h-[44px]">
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          <div>
+            <label for="task-label" class="block text-xs font-medium text-neutral-600">Label</label>
+            <input id="task-label" type="text" [(ngModel)]="formTask.label" name="label"
+              class="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 min-h-[44px]"
+              placeholder="e.g. UI, FE" />
+          </div>
+          <div>
+            <label for="task-meta" class="block text-xs font-medium text-neutral-600">Meta / details</label>
+            <input id="task-meta" type="text" [(ngModel)]="formTask.meta" name="meta"
+              class="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 min-h-[44px]"
+              placeholder="e.g. Design · 1d est." />
+          </div>
+          <div class="flex flex-wrap justify-end gap-2 pt-2">
+            <button type="button" (click)="cancelForm()"
+              class="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 min-h-[44px] touch-manipulation">
+              Cancel
+            </button>
+            <button type="submit"
+              class="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800 min-h-[44px] touch-manipulation">
+              {{ isEditMode ? 'Save changes' : 'Add task' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
-
-    <!-- IN PROGRESS -->
-    <div class="bg-white rounded-xl shadow-sm">
-      <div class="border-b px-4 py-3 font-semibold text-slate-700">
-        In Progress
-      </div>
-      <div class="p-4 space-y-3">
-        <div class="bg-blue-50 rounded-lg p-3 shadow-sm">
-          Implement board UI
-        </div>
-      </div>
-    </div>
-
-    <!-- DONE -->
-    <div class="bg-white rounded-xl shadow-sm">
-      <div class="border-b px-4 py-3 font-semibold text-slate-700">
-        Done
-      </div>
-      <div class="p-4 space-y-3">
-        <div class="bg-green-50 rounded-lg p-3 shadow-sm">
-          Project setup
-        </div>
-      </div>
-    </div>
-
-  </div>
+  }
 </div>
