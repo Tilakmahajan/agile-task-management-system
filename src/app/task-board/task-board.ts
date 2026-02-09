@@ -17,46 +17,14 @@ export interface Task {
 const STORAGE_KEY = 'agile-task-board';
 
 const DEFAULT_TODO: Task[] = [
-  {
-    id: '1',
-    title: 'Design UI',
-    description: 'Explore layout, visual hierarchy, and interactions for the main board experience.',
-    priority: 'High',
-    label: 'UI',
-    meta: 'Design · 1d est.',
-    statusLabel: 'Backlog',
-  },
-  {
-    id: '2',
-    title: 'Create components',
-    description: 'Break the board into reusable, well-structured Angular components.',
-    priority: 'Medium',
-    label: 'NG',
-    meta: 'Frontend · 2d est.',
-    statusLabel: 'Ready',
-  },
+
+
 ];
 const DEFAULT_IN_PROGRESS: Task[] = [
-  {
-    id: '3',
-    title: 'Implement board UI',
-    description: 'Wire the task columns, cards, and responsive layout using Tailwind and Angular templates.',
-    priority: 'Medium',
-    label: 'FE',
-    meta: 'Frontend · 60% complete',
-    statusLabel: 'Active',
-  },
+
 ];
 const DEFAULT_DONE: Task[] = [
-  {
-    id: '4',
-    title: 'Project setup',
-    description: 'Initialize Angular app, configure Tailwind, and prepare the workspace for agile workflows.',
-    priority: 'Medium',
-    label: '✔',
-    meta: 'Completed · Today',
-    statusLabel: 'Ready to deploy',
-  },
+
 ];
 
 @Component({
