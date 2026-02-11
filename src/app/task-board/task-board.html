@@ -24,16 +24,7 @@
             </span>
           
           </button>
-          <button
-            (click)="openAddTask('todo')"
-            class="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-3 py-2 sm:px-4 text-xs sm:text-sm font-semibold text-white shadow-md transition hover:bg-neutral-800 min-h-[44px] touch-manipulation"
-            type="button"
-          >
-            <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[11px] font-semibold text-white">
-              +
-            </span>
-            Add task
-          </button>
+          <!-- Add button moved into To Do column footer for better UX -->
         </div>
       </div>
 
@@ -88,14 +79,17 @@
       </div>
 
       <!-- Board – single column on mobile, 3 on md+ -->
-      <div class="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-3">
+
+
         <!-- TO DO -->
-        <section
-          class="flex min-h-[220px] sm:min-h-[260px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-3 sm:p-4 shadow-sm backdrop-blur-sm"
-          aria-label="To Do column"
-          (dragover)="onDragOver($event)"
-          (drop)="onDrop('todo', $event)"
-        >
+      <section
+  class="todo-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
+  aria-label="To Do column"
+  (dragover)="onDragOver($event)"
+  (drop)="onDrop('todo', $event)"
+>
+
           <header class="flex items-center justify-between border-b border-neutral-100 pb-2 sm:pb-3">
             <div class="flex items-center gap-2 min-w-0">
               <span class="h-1 w-6 rounded-full bg-neutral-400 shrink-0"></span>
@@ -139,21 +133,28 @@
                   </span>
                 </div>
                 <div class="task-card-actions mt-3 pt-2 border-t border-neutral-100 flex flex-wrap gap-2" (mousedown)="$event.stopPropagation()">
-                  <button type="button" class="edit-btn rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 min-h-[40px] touch-manipulation" (click)="openEditTask(task, 'todo', $index); $event.stopPropagation()" title="Edit task">Edit</button>
-                  <button type="button" class="delete-btn rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-50 min-h-[40px] touch-manipulation" (click)="deleteTask('todo', $index); $event.stopPropagation()" title="Delete task">Delete</button>
+                  <button type="button" class="edit-btn rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-100 min-h-[40px] touch-manipulation" (click)="openEditTask(task, 'todo', $index); $event.stopPropagation()" title="Edit task">Edit</button>
+                  <button type="button" class="delete-btn rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-100 min-h-[40px] touch-manipulation" (click)="deleteTask('todo', $index); $event.stopPropagation()" title="Delete task">Delete</button>
                 </div>
               </article>
             }
+          </div>
+          <div class="mt-auto pt-3 border-t border-neutral-100 flex justify-center">
+            <button (click)="openAddTask('todo')" type="button" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 min-h-[44px] touch-manipulation">
+              <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[11px] font-semibold text-white">+</span>
+              New task
+            </button>
           </div>
         </section>
 
         <!-- IN PROGRESS -->
         <section
-          class="flex min-h-[220px] sm:min-h-[260px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-3 sm:p-4 shadow-sm backdrop-blur-sm"
-          aria-label="In Progress column"
-          (dragover)="onDragOver($event)"
-          (drop)="onDrop('inProgress', $event)"
-        >
+  class="progress-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
+  aria-label="In Progress column"
+  (dragover)="onDragOver($event)"
+  (drop)="onDrop('inProgress', $event)"
+>
+
           <header class="flex items-center justify-between border-b border-neutral-100 pb-2 sm:pb-3">
             <div class="flex items-center gap-2 min-w-0">
               <span class="h-1 w-6 rounded-full bg-neutral-500 shrink-0"></span>
@@ -197,8 +198,8 @@
                   </span>
                 </div>
                 <div class="task-card-actions mt-3 pt-2 border-t border-neutral-100 flex flex-wrap gap-2" (mousedown)="$event.stopPropagation()">
-                  <button type="button" class="edit-btn rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 min-h-[40px] touch-manipulation" (click)="openEditTask(task, 'inProgress', $index); $event.stopPropagation()" title="Edit task">Edit</button>
-                  <button type="button" class="delete-btn rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-50 min-h-[40px] touch-manipulation" (click)="deleteTask('inProgress', $index); $event.stopPropagation()" title="Delete task">Delete</button>
+                  <button type="button" class="edit-btn rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-100 min-h-[40px] touch-manipulation" (click)="openEditTask(task, 'inProgress', $index); $event.stopPropagation()" title="Edit task">Edit</button>
+                  <button type="button" class="delete-btn rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-100 min-h-[40px] touch-manipulation" (click)="deleteTask('inProgress', $index); $event.stopPropagation()" title="Delete task">Delete</button>
                 </div>
               </article>
             }
@@ -206,12 +207,13 @@
         </section>
 
         <!-- DONE -->
-        <section
-          class="flex min-h-[220px] sm:min-h-[260px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-3 sm:p-4 shadow-sm backdrop-blur-sm"
-          aria-label="Done column"
-          (dragover)="onDragOver($event)"
-          (drop)="onDrop('done', $event)"
-        >
+       <section
+  class="done-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
+  aria-label="Done column"
+  (dragover)="onDragOver($event)"
+  (drop)="onDrop('done', $event)"
+>
+
           <header class="flex items-center justify-between border-b border-neutral-100 pb-2 sm:pb-3">
             <div class="flex items-center gap-2 min-w-0">
               <span class="h-1 w-6 rounded-full bg-neutral-600 shrink-0"></span>
@@ -255,8 +257,8 @@
                   </span>
                 </div>
                 <div class="task-card-actions mt-3 pt-2 border-t border-neutral-100 flex flex-wrap gap-2" (mousedown)="$event.stopPropagation()">
-                  <button type="button" class="edit-btn rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 min-h-[40px] touch-manipulation" (click)="openEditTask(task, 'done', $index); $event.stopPropagation()" title="Edit task">Edit</button>
-                  <button type="button" class="delete-btn rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-50 min-h-[40px] touch-manipulation" (click)="deleteTask('done', $index); $event.stopPropagation()" title="Delete task">Delete</button>
+                  <button type="button" class="edit-btn rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 shadow-sm hover:bg-indigo-100 min-h-[40px] touch-manipulation" (click)="openEditTask(task, 'done', $index); $event.stopPropagation()" title="Edit task">Edit</button>
+                  <button type="button" class="delete-btn rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-100 min-h-[40px] touch-manipulation" (click)="deleteTask('done', $index); $event.stopPropagation()" title="Delete task">Delete</button>
                 </div>
               </article>
             }
@@ -313,7 +315,7 @@
               Cancel
             </button>
             <button type="submit"
-              class="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800 min-h-[44px] touch-manipulation">
+              class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 min-h-[44px] touch-manipulation">
               {{ isEditMode ? 'Save changes' : 'Add task' }}
             </button>
           </div>

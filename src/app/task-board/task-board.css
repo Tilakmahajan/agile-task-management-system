@@ -1,95 +1,263 @@
-/* Attractive light background – soft gradient + subtle pattern */
+/* =========================
+   ROOT VARIABLES
+========================= */
+:root {
+  --primary-600: #4f46e5;
+  --primary-700: #4338ca;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+}
+
+/* =========================
+   MODERN GRADIENT BACKGROUND
+========================= */
 .task-board-bg {
   position: relative;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #faf5ff 50%, #fdf4ff 75%, #f0fdf4 100%);
+  background: linear-gradient(
+    135deg,
+    #dbeafe 0%,       /* light blue */
+    #e0e7ff 25%,      /* soft indigo */
+    #f3e8ff 55%,      /* soft purple */
+    #ffe4e6 100%      /* soft pink */
+  );
   background-attachment: fixed;
+  overflow: hidden;
 }
 
+/* Stronger overlay glow layers */
 .task-board-bg::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(147, 197, 253, 0.15) 0%, transparent 45%),
-    radial-gradient(circle at 80% 70%, rgba(196, 181, 253, 0.12) 0%, transparent 45%),
-    radial-gradient(circle at 50% 50%, rgba(167, 243, 208, 0.08) 0%, transparent 50%);
+  background:
+    radial-gradient(
+      circle at 20% 30%,
+      rgba(79, 70, 229, 0.25),   /* stronger indigo */
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 70%,
+      rgba(168, 85, 247, 0.22),  /* stronger purple */
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 50% 90%,
+      rgba(236, 72, 153, 0.18),  /* soft pink glow */
+      transparent 60%
+    );
+  backdrop-filter: blur(40px);
   pointer-events: none;
 }
 
-.task-board-bg .task-board-content {
+/* Add subtle moving depth layer */
+.task-board-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.35),
+    rgba(255,255,255,0.15)
+  );
+  pointer-events: none;
+}
+
+/* Content above background */
+.task-board-content {
   position: relative;
   z-index: 1;
 }
 
-.title {
-  text-align: center;
-  margin: 20px;
+
+/* =========================
+   FORCE MOBILE VIEW UNTIL XL (1280px)
+========================= */
+
+/* Stack columns by default */
+.board-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
 }
 
-.board {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
+/* Only desktop gets 3 columns */
+@media (min-width: 1280px) {
+  .board-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
-.column {
-  width: 250px;
-  height: 300px;
-  background: #f1f5f9;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* =========================
+   COLUMN STYLE (Glass UI)
+========================= */
+.board-column {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(18px);
+  border-radius: 1.25rem;
+  padding: 1.2rem;
+  box-shadow: 0 20px 45px -25px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  transition: transform 0.3s ease;
+}
+
+.board-column:hover {
+  transform: translateY(-3px);
+}
+
+/* =========================
+   TASK CARD – MODERN PREMIUM STYLE
+========================= */
+.task-card {
+  border-radius: 1rem;
+  padding: 1rem;
+  transition: all 0.35s ease;
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 12px 28px -12px rgba(0, 0, 0, 0.15),
+    0 4px 8px -6px rgba(0, 0, 0, 0.08);
+}
+/* TO DO - Soft Indigo */
+.todo-column .task-card {
+  background: linear-gradient(
+    145deg,
+    rgba(79, 70, 229, 0.15),
+    rgba(99, 102, 241, 0.08)
+  );
+  border: 1px solid rgba(79, 70, 229, 0.25);
+}
+
+/* IN PROGRESS - Soft Amber */
+.progress-column .task-card {
+  background: linear-gradient(
+    145deg,
+    rgba(245, 158, 11, 0.18),
+    rgba(251, 191, 36, 0.08)
+  );
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* DONE - Soft Green */
+.done-column .task-card {
+  background: linear-gradient(
+    145deg,
+    rgba(34, 197, 94, 0.18),
+    rgba(74, 222, 128, 0.08)
+  );
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+
+/* Hover lift effect */
+.task-card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 18px 35px -12px rgba(79, 70, 229, 0.25),
+    0 10px 15px -10px rgba(0, 0, 0, 0.1);
+  border-color: rgba(79, 70, 229, 0.4);
+}
+
+/* Active drag feel */
+.task-card[draggable="true"]:active {
+  transform: scale(1.03);
+  opacity: 0.9;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+.btn-primary {
+  background: var(--primary-600);
+  color: white;
+  border-radius: 0.7rem;
+  padding: 0.6rem 1rem;
   font-weight: 600;
-  font-size: 18px;
+  transition: all 0.3s ease;
 }
 
-/* Drag and drop – subtle feedback */
-.task-card[draggable='true']:active {
-  opacity: 0.85;
+.btn-primary:hover {
+  background: var(--primary-700);
+  transform: translateY(-2px);
 }
 
-.task-card:focus {
-  outline: none;
+/* =========================
+   STATS CARDS
+========================= */
+.stats-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(14px);
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 15px 35px -20px rgba(0, 0, 0, 0.2);
 }
 
-/* Task card actions – show on hover so they don’t clutter */
-.task-card-actions {
-  opacity: 1;
+/* =========================
+   TASK ACTION BUTTONS
+========================= */
+.edit-btn,
+.delete-btn {
+  transition: all 0.25s ease;
 }
+
+.edit-btn:hover {
+  background: rgba(79, 70, 229, 0.12);
+  transform: translateY(-1px);
+}
+
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.12);
+  transform: translateY(-1px);
+}
+
 .edit-btn:focus,
 .delete-btn:focus {
   outline: 2px solid rgba(0, 0, 0, 0.2);
   outline-offset: 2px;
 }
 
-/* Task form modal – responsive, scrollable on small screens */
+/* =========================
+   MODAL UPGRADE
+========================= */
 .task-form-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 0.75rem;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  padding: 1rem;
+  z-index: 50;
 }
+
 .task-form-modal {
   width: 100%;
-  max-width: 28rem;
-  max-height: calc(100vh - 1.5rem);
+  max-width: 32rem;
+  max-height: 90vh;
   overflow-y: auto;
   background: white;
-  border-radius: 1rem;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  margin: auto;
+  border-radius: 1.5rem;
+  padding: 2rem;
+  box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.3);
 }
-@media (max-width: 480px) {
+
+/* Tablet modal spacing */
+@media (max-width: 1024px) {
   .task-form-modal {
-    padding: 1rem;
+    padding: 1.5rem;
   }
+}
+
+/* =========================
+   SCROLLBAR CLEAN LOOK
+========================= */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(79, 70, 229, 0.3);
+  border-radius: 10px;
 }
