@@ -17,10 +17,10 @@
   min-height: 100vh;
   background: linear-gradient(
     135deg,
-    #dbeafe 0%,       /* light blue */
+    #79abec 0%,       /* light blue */
     #e0e7ff 25%,      /* soft indigo */
     #f3e8ff 55%,      /* soft purple */
-    #ffe4e6 100%      /* soft pink */
+    #df86b0d8 100%      /* soft pink */
   );
   background-attachment: fixed;
   overflow: hidden;
@@ -107,7 +107,7 @@
 }
 
 /* =========================
-   TASK CARD – MODERN PREMIUM STYLE
+   TASK CARD � MODERN PREMIUM STYLE
 ========================= */
 .task-card {
   border-radius: 1rem;
