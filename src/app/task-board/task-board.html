@@ -9,7 +9,7 @@
             Agile Sprint Workspace
           </div>
           <h1 class="mt-2 sm:mt-3 text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl md:text-4xl truncate">
-            Agile Task Board
+            Task Matrix
           </h1>
         
         </div>
@@ -30,7 +30,7 @@
 
       <!-- Stats row – 1 col on small, 3 on md+ -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div class="rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
+        <div class="stats-card rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
           <div class="flex items-center justify-between text-xs font-medium text-neutral-500">
             <span>Open tasks</span>
             <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600">Backlog size</span>
@@ -44,7 +44,7 @@
           </div>
         </div>
 
-        <div class="rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
+        <div class="stats-card rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
           <div class="flex items-center justify-between text-xs font-medium text-neutral-500">
             <span>In progress</span>
             <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600">Flow load</span>
@@ -59,7 +59,7 @@
           </div>
         </div>
 
-        <div class="rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
+        <div class="stats-card rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
           <div class="flex items-center justify-between text-xs font-medium text-neutral-500">
             <span>Done this sprint</span>
             <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-700">Throughput</span>
@@ -84,7 +84,7 @@
 
         <!-- TO DO -->
       <section
-  class="todo-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
+  class="board-column todo-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
   aria-label="To Do column"
   (dragover)="onDragOver($event)"
   (drop)="onDrop('todo', $event)"
@@ -149,7 +149,7 @@
 
         <!-- IN PROGRESS -->
         <section
-  class="progress-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
+  class="board-column progress-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
   aria-label="In Progress column"
   (dragover)="onDragOver($event)"
   (drop)="onDrop('inProgress', $event)"
@@ -208,7 +208,7 @@
 
         <!-- DONE -->
        <section
-  class="done-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
+  class="board-column done-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
   aria-label="Done column"
   (dragover)="onDragOver($event)"
   (drop)="onDrop('done', $event)"
