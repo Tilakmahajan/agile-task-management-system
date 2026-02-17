@@ -211,6 +211,37 @@
   opacity: 0.9;
 }
 
+.task-card.is-dragging {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.task-card.drop-before::after,
+.task-card.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  height: 2px;
+  background: rgba(79, 70, 229, 0.95);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.task-card.drop-before::after {
+  top: -0.35rem;
+}
+
+.task-card.drop-after::after {
+  bottom: -0.35rem;
+}
+
+.board-column.drop-column-active {
+  box-shadow:
+    0 0 0 2px rgba(79, 70, 229, 0.32),
+    0 20px 45px -25px rgba(0, 0, 0, 0.15);
+}
+
 .task-card-fixed {
   height: 12.5rem;
   display: flex;

@@ -38,6 +38,7 @@ export class TaskBoard implements OnInit {
   inProgressTasks: Task[] = [];
   doneTasks: Task[] = [];
   priorityFilter: 'All' | 'High' | 'Medium' | 'Low' = 'All';
+  sortMode: 'manual' | 'priorityHigh' | 'priorityLow' | 'dueSoon' | 'dueLate' | 'title' = 'manual';
 
   showTaskForm = false;
   isEditMode = false;
@@ -47,6 +48,10 @@ export class TaskBoard implements OnInit {
   formTask: Task = this.createEmptyTask();
 
   private dragSource: { column: ColumnId; index: number; taskId: string } | null = null;
+  draggingTaskId: string | null = null;
+  dropTargetTaskId: string | null = null;
+  dropTargetPlacement: 'before' | 'after' | null = null;
+  dropTargetColumn: ColumnId | null = null;
 
   ngOnInit(): void {
     this.loadFromStorage();
@@ -111,15 +116,15 @@ export class TaskBoard implements OnInit {
   }
 
   get filteredTodoTasks(): Task[] {
-    return this.filterByPriority(this.todoTasks);
+    return this.sortTasks(this.filterByPriority(this.todoTasks));
   }
 
   get filteredInProgressTasks(): Task[] {
-    return this.filterByPriority(this.inProgressTasks);
+    return this.sortTasks(this.filterByPriority(this.inProgressTasks));
   }
 
   get filteredDoneTasks(): Task[] {
-    return this.filterByPriority(this.doneTasks);
+    return this.sortTasks(this.filterByPriority(this.doneTasks));
   }
 
   get openTasksCount(): number {
@@ -141,6 +146,27 @@ export class TaskBoard implements OnInit {
   private filterByPriority(tasks: Task[]): Task[] {
     if (this.priorityFilter === 'All') return tasks;
     return tasks.filter((task) => task.priority === this.priorityFilter);
+  }
+
+  private sortTasks(tasks: Task[]): Task[] {
+    if (this.sortMode === 'manual') return tasks;
+
+    const priorityRank: Record<Task['priority'], number> = { High: 3, Medium: 2, Low: 1 };
+    const withTime = (dateStr: string): number => {
+      if (!dateStr) return Number.POSITIVE_INFINITY;
+      const time = new Date(dateStr).getTime();
+      return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
+    };
+
+    const sorted = [...tasks];
+    sorted.sort((a, b) => {
+      if (this.sortMode === 'priorityHigh') return priorityRank[b.priority] - priorityRank[a.priority];
+      if (this.sortMode === 'priorityLow') return priorityRank[a.priority] - priorityRank[b.priority];
+      if (this.sortMode === 'dueSoon') return withTime(a.dueDate) - withTime(b.dueDate);
+      if (this.sortMode === 'dueLate') return withTime(b.dueDate) - withTime(a.dueDate);
+      return a.title.localeCompare(b.title);
+    });
+    return sorted;
   }
 
   getColumnTasks(column: ColumnId): Task[] {
@@ -231,9 +257,14 @@ export class TaskBoard implements OnInit {
   }
 
   onDragStart(column: ColumnId, task: Task, event: DragEvent): void {
+    if (column === 'todo' && this.sortMode !== 'manual') {
+      this.sortMode = 'manual';
+    }
     const index = this.getColumnTasks(column).findIndex((item) => item.id === task.id);
     if (index < 0) return;
     this.dragSource = { column, index, taskId: task.id };
+    this.draggingTaskId = task.id;
+    this.dropTargetColumn = column;
     if (event.dataTransfer && task) {
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', JSON.stringify({ column, index, taskId: task.id }));
@@ -246,6 +277,17 @@ export class TaskBoard implements OnInit {
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
   }
 
+  onColumnDragOver(column: ColumnId, event: DragEvent): void {
+    this.onDragOver(event);
+    this.dropTargetColumn = column;
+  }
+
+  onTaskDragOver(taskId: string, event: DragEvent): void {
+    this.onDragOver(event);
+    this.dropTargetTaskId = taskId;
+    this.dropTargetPlacement = this.shouldPlaceAfterTarget(event) ? 'after' : 'before';
+  }
+
   onDrop(targetColumn: ColumnId, event: DragEvent): void {
     event.preventDefault();
     if (!this.dragSource) return;
@@ -253,12 +295,16 @@ export class TaskBoard implements OnInit {
     const sourceArrayNow = this.getColumnTasks(sourceColumn);
     const sourceIndex = sourceArrayNow.findIndex((task) => task.id === sourceTaskId);
     if (sourceIndex < 0) {
-      this.dragSource = null;
+      this.clearDragState();
       return;
     }
 
     if (sourceColumn === targetColumn) {
       if (targetColumn === 'todo') {
+        if (this.sortMode !== 'manual') {
+          this.clearDragState();
+          return;
+        }
         const todo = this.getColumnTasks('todo');
         const [moved] = todo.splice(sourceIndex, 1);
         if (moved) {
@@ -266,14 +312,14 @@ export class TaskBoard implements OnInit {
           this.saveToStorage();
         }
       }
-      this.dragSource = null;
+      this.clearDragState();
       return;
     }
 
     const sourceList = this.getColumnTasks(sourceColumn);
     const task = sourceList[sourceIndex];
     if (!task) {
-      this.dragSource = null;
+      this.clearDragState();
       return;
     }
 
@@ -294,7 +340,7 @@ export class TaskBoard implements OnInit {
     const updatedTask = this.updateTaskStatusForColumn({ ...task }, targetColumn);
     targetArray.push(updatedTask);
     this.saveToStorage();
-    this.dragSource = null;
+    this.clearDragState();
   }
 
   onDropOnTask(targetColumn: ColumnId, targetTaskId: string, event: DragEvent): void {
@@ -309,24 +355,28 @@ export class TaskBoard implements OnInit {
     const sourceIndex = sourceArray.findIndex((task) => task.id === sourceTaskId);
     const sourceTask = sourceArray[sourceIndex];
     if (!sourceTask) {
-      this.dragSource = null;
+      this.clearDragState();
       return;
     }
 
     const targetIndex = targetArray.findIndex((task) => task.id === targetTaskId);
     if (targetIndex < 0) {
-      this.dragSource = null;
+      this.clearDragState();
       return;
     }
 
     if (sourceColumn === targetColumn) {
       if (targetColumn !== 'todo') {
-        this.dragSource = null;
+        this.clearDragState();
+        return;
+      }
+      if (this.sortMode !== 'manual') {
+        this.clearDragState();
         return;
       }
 
       if (sourceTaskId === targetTaskId) {
-        this.dragSource = null;
+        this.clearDragState();
         return;
       }
 
@@ -338,7 +388,7 @@ export class TaskBoard implements OnInit {
       }
 
       this.saveToStorage();
-      this.dragSource = null;
+      this.clearDragState();
       return;
     }
 
@@ -347,11 +397,11 @@ export class TaskBoard implements OnInit {
     const insertIndex = placeAfterTarget ? targetIndex + 1 : targetIndex;
     targetArray.splice(insertIndex, 0, updatedTask);
     this.saveToStorage();
-    this.dragSource = null;
+    this.clearDragState();
   }
 
   onDragEnd(): void {
-    this.dragSource = null;
+    this.clearDragState();
   }
 
   private updateTaskStatusForColumn(task: Task, column: ColumnId): Task {
@@ -430,5 +480,13 @@ export class TaskBoard implements OnInit {
     if (!targetEl) return false;
     const rect = targetEl.getBoundingClientRect();
     return event.clientY > rect.top + rect.height / 2;
+  }
+
+  private clearDragState(): void {
+    this.dragSource = null;
+    this.draggingTaskId = null;
+    this.dropTargetTaskId = null;
+    this.dropTargetPlacement = null;
+    this.dropTargetColumn = null;
   }
 }

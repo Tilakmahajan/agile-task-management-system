@@ -28,6 +28,21 @@
               <option value="Low">Low</option>
             </select>
           </div>
+          <div class="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white/80 px-3 py-2 shadow-sm backdrop-blur-sm min-h-[44px]">
+            <label for="sort-mode" class="text-xs sm:text-sm font-medium text-neutral-700">Sort</label>
+            <select
+              id="sort-mode"
+              [(ngModel)]="sortMode"
+              class="rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs sm:text-sm text-neutral-700 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+            >
+              <option value="manual">Manual</option>
+              <option value="priorityHigh">Priority: High to Low</option>
+              <option value="priorityLow">Priority: Low to High</option>
+              <option value="dueSoon">Due date: Soonest first</option>
+              <option value="dueLate">Due date: Latest first</option>
+              <option value="title">Title: A to Z</option>
+            </select>
+          </div>
           <button
             class="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white/80 px-3 py-2 sm:px-4 text-xs sm:text-sm font-medium text-neutral-700 shadow-sm backdrop-blur-sm transition hover:bg-white hover:border-neutral-400 min-h-[44px] touch-manipulation"
             type="button"
@@ -98,8 +113,9 @@
         <!-- TO DO -->
       <section
   class="board-column todo-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
+  [class.drop-column-active]="dropTargetColumn === 'todo'"
   aria-label="To Do column"
-  (dragover)="onDragOver($event)"
+  (dragover)="onColumnDragOver('todo', $event)"
   (drop)="onDrop('todo', $event)"
 >
 
@@ -119,9 +135,12 @@
             @for (task of filteredTodoTasks; track task.id) {
               <article
                 class="task-card task-card-fixed group cursor-grab active:cursor-grabbing rounded-lg border border-neutral-200 bg-neutral-50/50 p-3 transition hover:border-neutral-300 hover:shadow-sm"
+                [class.is-dragging]="draggingTaskId === task.id"
+                [class.drop-before]="dropTargetTaskId === task.id && dropTargetPlacement === 'before'"
+                [class.drop-after]="dropTargetTaskId === task.id && dropTargetPlacement === 'after'"
                 draggable="true"
                 (dragstart)="onDragStart('todo', task, $event)"
-                (dragover)="onDragOver($event)"
+                (dragover)="onTaskDragOver(task.id, $event)"
                 (drop)="onDropOnTask('todo', task.id, $event)"
                 (dragend)="onDragEnd()"
               >
@@ -162,8 +181,9 @@
         <!-- IN PROGRESS -->
         <section
   class="board-column progress-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
+  [class.drop-column-active]="dropTargetColumn === 'inProgress'"
   aria-label="In Progress column"
-  (dragover)="onDragOver($event)"
+  (dragover)="onColumnDragOver('inProgress', $event)"
   (drop)="onDrop('inProgress', $event)"
 >
 
@@ -216,10 +236,11 @@
         </section>
 
         <!-- DONE -->
-       <section
+        <section
   class="board-column done-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
+  [class.drop-column-active]="dropTargetColumn === 'done'"
   aria-label="Done column"
-  (dragover)="onDragOver($event)"
+  (dragover)="onColumnDragOver('done', $event)"
   (drop)="onDrop('done', $event)"
 >
 
