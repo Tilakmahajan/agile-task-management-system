@@ -106,6 +106,27 @@
   transform: translateY(-3px);
 }
 
+.todo-column,
+.progress-column,
+.done-column {
+  max-height: min(78vh, 720px);
+  overflow: hidden;
+}
+
+.task-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.sticky-add-task {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.72));
+}
+
 /* =========================
    TASK CARD � MODERN PREMIUM STYLE
 ========================= */
@@ -188,6 +209,34 @@
 .task-card[draggable="true"]:active {
   transform: scale(1.03);
   opacity: 0.9;
+}
+
+.task-card-fixed {
+  height: 12.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-card-desc {
+  line-height: 1.1rem;
+  min-height: 2rem;
+  max-height: 2rem;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.task-card-fixed .task-card-actions {
+  padding-top: 0.4rem;
+}
+
+.task-card-fixed .task-card-actions {
+  margin-top: auto;
+}
+
+.due-date-row {
+  min-height: 1rem;
 }
 
 /* =========================
