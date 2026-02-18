@@ -112,7 +112,8 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-3">
+      <!-- horizontal scroll wrapper -->
+      <div class="board-grid">
         @for (column of columns; track trackColumn($index, column)) {
           <section
             class="board-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
@@ -148,7 +149,15 @@
               </div>
             </header>
 
-            <div class="mt-1 space-y-3 min-h-[80px] sm:min-h-[120px] task-list-scroll">
+            <div class="relative mt-1 space-y-3 min-h-[80px] sm:min-h-[120px] task-list-scroll">
+              @if (getFilteredTasks(column).length === 0) {
+                <div class="empty-column-message absolute inset-0 flex flex-col items-center justify-center p-4 rounded-lg bg-neutral-50 text-neutral-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6m-6 6h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                  </svg>
+                  <span class="text-sm font-medium">No tasks here</span>
+                </div>
+              }
               @for (task of getFilteredTasks(column); track task.id) {
                 <article
                   class="task-card task-card-fixed group cursor-grab active:cursor-grabbing rounded-lg border border-neutral-200 bg-neutral-50/50 p-3 transition hover:border-neutral-300 hover:shadow-sm"
