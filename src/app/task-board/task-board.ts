@@ -2,8 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
-export type ColumnId = 'todo' | 'inProgress' | 'done';
-
 export interface Task {
   id: string;
   title: string;
@@ -13,18 +11,24 @@ export interface Task {
   statusLabel: string;
 }
 
+type PriorityFilter = 'All' | 'High' | 'Medium' | 'Low';
+type SortMode = 'manual' | 'priorityHigh' | 'priorityLow' | 'dueSoon' | 'dueLate' | 'title';
+type ColumnAccent = 'todo' | 'progress' | 'done' | 'custom';
+
+interface BoardColumn {
+  id: string;
+  title: string;
+  statusLabel: string;
+  accent: ColumnAccent;
+  tasks: Task[];
+  isDefault: boolean;
+}
+
+interface PersistedBoard {
+  columns: BoardColumn[];
+}
+
 const STORAGE_KEY = 'agile-task-board';
-
-const DEFAULT_TODO: Task[] = [
-
-
-];
-const DEFAULT_IN_PROGRESS: Task[] = [
-
-];
-const DEFAULT_DONE: Task[] = [
-
-];
 
 @Component({
   selector: 'app-task-board',
@@ -34,63 +38,389 @@ const DEFAULT_DONE: Task[] = [
   styleUrl: './task-board.css',
 })
 export class TaskBoard implements OnInit {
-  todoTasks: Task[] = [];
-  inProgressTasks: Task[] = [];
-  doneTasks: Task[] = [];
-  priorityFilter: 'All' | 'High' | 'Medium' | 'Low' = 'All';
-  sortMode: 'manual' | 'priorityHigh' | 'priorityLow' | 'dueSoon' | 'dueLate' | 'title' = 'manual';
+  columns: BoardColumn[] = [];
+
+  priorityFilter: PriorityFilter = 'All';
+  sortMode: SortMode = 'manual';
 
   showTaskForm = false;
   isEditMode = false;
-  addToColumn: ColumnId = 'todo';
-  editContext: { column: ColumnId; index: number } | null = null;
+  addToColumnId = 'todo';
+  editContext: { columnId: string; index: number } | null = null;
 
   formTask: Task = this.createEmptyTask();
+  newColumnTitle = '';
 
-  private dragSource: { column: ColumnId; index: number; taskId: string } | null = null;
+  private dragSource: { columnId: string; taskId: string } | null = null;
   draggingTaskId: string | null = null;
   dropTargetTaskId: string | null = null;
   dropTargetPlacement: 'before' | 'after' | null = null;
-  dropTargetColumn: ColumnId | null = null;
+  dropTargetColumnId: string | null = null;
 
   ngOnInit(): void {
     this.loadFromStorage();
   }
 
+  get openTasksCount(): number {
+    return this.getFilteredTasksById('todo').length;
+  }
+
+  get inProgressTasksCount(): number {
+    return this.getFilteredTasksById('inProgress').length;
+  }
+
+  get doneTasksCount(): number {
+    return this.getFilteredTasksById('done').length;
+  }
+
+  get totalVisibleTasksCount(): number {
+    return this.columns.reduce((sum, column) => sum + this.getFilteredTasks(column).length, 0);
+  }
+
+  get canRemoveColumns(): boolean {
+    return this.columns.length > 1;
+  }
+
+  trackColumn(_: number, column: BoardColumn): string {
+    return column.id;
+  }
+
+  getFilteredTasks(column: BoardColumn): Task[] {
+    return this.sortTasks(this.filterByPriority(column.tasks));
+  }
+
+  getColumnTasks(columnId: string): Task[] {
+    return this.getColumnById(columnId)?.tasks ?? [];
+  }
+
+  openAddTask(columnId: string): void {
+    if (!this.getColumnById(columnId)) return;
+    this.addToColumnId = columnId;
+    this.isEditMode = false;
+    this.editContext = null;
+    this.formTask = {
+      ...this.createEmptyTask(),
+      id: Date.now().toString(),
+      statusLabel: this.getColumnStatusLabel(columnId),
+    };
+    this.showTaskForm = true;
+  }
+
+  openEditTask(task: Task, columnId: string): void {
+    const arr = this.getColumnTasks(columnId);
+    const actualIndex = arr.findIndex((item) => item.id === task.id);
+    if (actualIndex < 0) return;
+    this.isEditMode = true;
+    this.editContext = { columnId, index: actualIndex };
+    this.formTask = { ...task };
+    this.showTaskForm = true;
+  }
+
+  saveTask(): void {
+    const t = this.formTask;
+    if (!t.title?.trim()) return;
+
+    if (this.isEditMode && this.editContext) {
+      const arr = this.getColumnTasks(this.editContext.columnId);
+      arr[this.editContext.index] = { ...t, title: t.title.trim(), description: t.description?.trim() ?? '' };
+    } else {
+      const targetColumn = this.getColumnById(this.addToColumnId);
+      if (!targetColumn) return;
+
+      const newTask: Task = {
+        ...this.createEmptyTask(),
+        ...t,
+        id: t.id || Date.now().toString(),
+        title: t.title.trim(),
+        description: t.description?.trim() ?? '',
+        statusLabel: targetColumn.statusLabel,
+      };
+      targetColumn.tasks.push(newTask);
+    }
+
+    if (this.priorityFilter !== 'All' && t.priority !== this.priorityFilter) {
+      this.priorityFilter = 'All';
+    }
+
+    this.saveToStorage();
+    this.cancelForm();
+  }
+
+  cancelForm(): void {
+    this.showTaskForm = false;
+    this.isEditMode = false;
+    this.editContext = null;
+    this.formTask = this.createEmptyTask();
+  }
+
+  deleteTaskById(columnId: string, taskId: string): void {
+    const arr = this.getColumnTasks(columnId);
+    const index = arr.findIndex((task) => task.id === taskId);
+    if (index >= 0) {
+      arr.splice(index, 1);
+      this.saveToStorage();
+    }
+  }
+
+  addColumn(): void {
+    const title = this.newColumnTitle.trim();
+    if (!title) return;
+
+    const id = this.createColumnId(title);
+    const column: BoardColumn = {
+      id,
+      title,
+      statusLabel: title,
+      accent: 'custom',
+      tasks: [],
+      isDefault: false,
+    };
+
+    this.columns.push(column);
+    this.newColumnTitle = '';
+    this.saveToStorage();
+  }
+
+  removeColumn(columnId: string): void {
+    if (this.columns.length <= 1) return;
+
+    const removeIndex = this.columns.findIndex((column) => column.id === columnId);
+    if (removeIndex < 0) return;
+
+    const removed = this.columns[removeIndex];
+    const fallback = this.columns.find((column) => column.id !== columnId);
+
+    if (fallback && removed.tasks.length) {
+      removed.tasks.forEach((task) => {
+        fallback.tasks.push({ ...task, statusLabel: fallback.statusLabel });
+      });
+    }
+
+    this.columns.splice(removeIndex, 1);
+
+    if (this.addToColumnId === columnId) {
+      this.addToColumnId = this.columns[0]?.id ?? 'todo';
+    }
+
+    if (this.editContext?.columnId === columnId) {
+      this.cancelForm();
+    }
+
+    this.saveToStorage();
+  }
+
+  onDragStart(columnId: string, task: Task, event: DragEvent): void {
+    if (this.sortMode !== 'manual') {
+      this.sortMode = 'manual';
+    }
+
+    const index = this.getColumnTasks(columnId).findIndex((item) => item.id === task.id);
+    if (index < 0) return;
+
+    this.dragSource = { columnId, taskId: task.id };
+    this.draggingTaskId = task.id;
+    this.dropTargetColumnId = columnId;
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', JSON.stringify({ columnId, taskId: task.id }));
+    }
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }
+
+  onColumnDragOver(columnId: string, event: DragEvent): void {
+    this.onDragOver(event);
+    this.dropTargetColumnId = columnId;
+  }
+
+  onTaskDragOver(taskId: string, event: DragEvent): void {
+    this.onDragOver(event);
+    this.dropTargetTaskId = taskId;
+    this.dropTargetPlacement = this.shouldPlaceAfterTarget(event) ? 'after' : 'before';
+  }
+
+  onDrop(targetColumnId: string, event: DragEvent): void {
+    event.preventDefault();
+    if (!this.dragSource) return;
+
+    const { columnId: sourceColumnId, taskId: sourceTaskId } = this.dragSource;
+    const sourceArray = this.getColumnTasks(sourceColumnId);
+    const sourceIndex = sourceArray.findIndex((task) => task.id === sourceTaskId);
+    if (sourceIndex < 0) {
+      this.clearDragState();
+      return;
+    }
+
+    const [moved] = sourceArray.splice(sourceIndex, 1);
+    if (!moved) {
+      this.clearDragState();
+      return;
+    }
+
+    const targetArray = this.getColumnTasks(targetColumnId);
+    const updatedTask = this.updateTaskStatusForColumn({ ...moved }, targetColumnId);
+    targetArray.push(updatedTask);
+
+    this.saveToStorage();
+    this.clearDragState();
+  }
+
+  onDropOnTask(targetColumnId: string, targetTaskId: string, event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!this.dragSource) return;
+
+    const { columnId: sourceColumnId, taskId: sourceTaskId } = this.dragSource;
+    const placeAfterTarget = this.shouldPlaceAfterTarget(event);
+
+    const sourceArray = this.getColumnTasks(sourceColumnId);
+    const targetArray = this.getColumnTasks(targetColumnId);
+
+    const sourceIndex = sourceArray.findIndex((task) => task.id === sourceTaskId);
+    const sourceTask = sourceArray[sourceIndex];
+    if (!sourceTask) {
+      this.clearDragState();
+      return;
+    }
+
+    const targetIndex = targetArray.findIndex((task) => task.id === targetTaskId);
+    if (targetIndex < 0) {
+      this.clearDragState();
+      return;
+    }
+
+    if (sourceColumnId === targetColumnId) {
+      const moved = this.moveTaskById(sourceArray, sourceTaskId, targetTaskId, placeAfterTarget);
+      if (moved) {
+        this.saveToStorage();
+      }
+      this.clearDragState();
+      return;
+    }
+
+    sourceArray.splice(sourceIndex, 1);
+    const updatedTask = this.updateTaskStatusForColumn({ ...sourceTask }, targetColumnId);
+    const insertIndex = placeAfterTarget ? targetIndex + 1 : targetIndex;
+    targetArray.splice(insertIndex, 0, updatedTask);
+
+    this.saveToStorage();
+    this.clearDragState();
+  }
+
+  onDragEnd(): void {
+    this.clearDragState();
+  }
+
+  private getFilteredTasksById(columnId: string): Task[] {
+    const column = this.getColumnById(columnId);
+    return column ? this.getFilteredTasks(column) : [];
+  }
+
+  private getColumnById(columnId: string): BoardColumn | undefined {
+    return this.columns.find((column) => column.id === columnId);
+  }
+
+  private getColumnStatusLabel(columnId: string): string {
+    return this.getColumnById(columnId)?.statusLabel ?? 'Backlog';
+  }
+
+  private createDefaultColumns(): BoardColumn[] {
+    return [
+      { id: 'todo', title: 'To Do', statusLabel: 'Backlog', accent: 'todo', tasks: [], isDefault: true },
+      { id: 'inProgress', title: 'In Progress', statusLabel: 'Active', accent: 'progress', tasks: [], isDefault: true },
+      { id: 'done', title: 'Done', statusLabel: 'Ready to deploy', accent: 'done', tasks: [], isDefault: true },
+    ];
+  }
+
   private loadFromStorage(): void {
+    const defaults = this.createDefaultColumns();
+
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const data = JSON.parse(raw) as { todo: Task[]; inProgress: Task[]; done: Task[] };
-        if (Array.isArray(data.todo)) this.todoTasks = data.todo.map((task) => this.normalizeTask(task));
-        if (Array.isArray(data.inProgress)) this.inProgressTasks = data.inProgress.map((task) => this.normalizeTask(task));
-        if (Array.isArray(data.done)) this.doneTasks = data.done.map((task) => this.normalizeTask(task));
-        if (this.todoTasks.length || this.inProgressTasks.length || this.doneTasks.length) {
-          return;
-        }
+      if (!raw) {
+        this.columns = defaults;
+        this.saveToStorage();
+        return;
       }
+
+      const parsed = JSON.parse(raw) as PersistedBoard | { todo?: Task[]; inProgress?: Task[]; done?: Task[] };
+
+      if ('columns' in parsed && Array.isArray(parsed.columns) && parsed.columns.length) {
+        this.columns = parsed.columns.map((column, index) => this.normalizeColumn(column, index));
+        return;
+      }
+
+      const legacy = parsed as { todo?: Task[]; inProgress?: Task[]; done?: Task[] };
+      this.columns = this.createDefaultColumns();
+      this.columns[0].tasks = Array.isArray(legacy.todo) ? legacy.todo.map((task) => this.normalizeTask(task)) : [];
+      this.columns[1].tasks = Array.isArray(legacy.inProgress) ? legacy.inProgress.map((task) => this.normalizeTask(task)) : [];
+      this.columns[2].tasks = Array.isArray(legacy.done) ? legacy.done.map((task) => this.normalizeTask(task)) : [];
+      this.saveToStorage();
     } catch {
-      // invalid or missing – use defaults
+      this.columns = defaults;
+      this.saveToStorage();
     }
-    this.todoTasks = DEFAULT_TODO.map((t) => this.normalizeTask(t));
-    this.inProgressTasks = DEFAULT_IN_PROGRESS.map((t) => this.normalizeTask(t));
-    this.doneTasks = DEFAULT_DONE.map((t) => this.normalizeTask(t));
-    this.saveToStorage();
   }
 
   private saveToStorage(): void {
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          todo: this.todoTasks,
-          inProgress: this.inProgressTasks,
-          done: this.doneTasks,
-        })
-      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ columns: this.columns }));
     } catch {
-      // ignore quota or other errors
+      // ignore storage issues
     }
+  }
+
+  private normalizeColumn(column: Partial<BoardColumn>, index: number): BoardColumn {
+    const title = (column.title ?? '').trim() || `Column ${index + 1}`;
+    const id = (column.id ?? '').trim() || this.createColumnId(title);
+    const lower = id.toLowerCase();
+
+    let accent: ColumnAccent = 'custom';
+    let isDefault = false;
+    let statusLabel = (column.statusLabel ?? '').trim() || title;
+
+    if (lower === 'todo') {
+      accent = 'todo';
+      isDefault = true;
+      if (!column.statusLabel?.trim()) statusLabel = 'Backlog';
+    } else if (lower === 'inprogress') {
+      accent = 'progress';
+      isDefault = true;
+      if (!column.statusLabel?.trim()) statusLabel = 'Active';
+    } else if (lower === 'done') {
+      accent = 'done';
+      isDefault = true;
+      if (!column.statusLabel?.trim()) statusLabel = 'Ready to deploy';
+    }
+
+    return {
+      id,
+      title,
+      statusLabel,
+      accent,
+      tasks: Array.isArray(column.tasks) ? column.tasks.map((task) => this.normalizeTask(task)) : [],
+      isDefault,
+    };
+  }
+
+  private createColumnId(title: string): string {
+    const base = title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'column';
+
+    let id = base;
+    let counter = 1;
+    while (this.columns.some((column) => column.id === id)) {
+      id = `${base}-${counter}`;
+      counter += 1;
+    }
+    return id;
   }
 
   private createEmptyTask(): Task {
@@ -113,34 +443,6 @@ export class TaskBoard implements OnInit {
       dueDate: task.dueDate ?? '',
       statusLabel: task.statusLabel ?? 'Backlog',
     };
-  }
-
-  get filteredTodoTasks(): Task[] {
-    return this.sortTasks(this.filterByPriority(this.todoTasks));
-  }
-
-  get filteredInProgressTasks(): Task[] {
-    return this.sortTasks(this.filterByPriority(this.inProgressTasks));
-  }
-
-  get filteredDoneTasks(): Task[] {
-    return this.sortTasks(this.filterByPriority(this.doneTasks));
-  }
-
-  get openTasksCount(): number {
-    return this.filteredTodoTasks.length;
-  }
-
-  get inProgressTasksCount(): number {
-    return this.filteredInProgressTasks.length;
-  }
-
-  get doneTasksCount(): number {
-    return this.filteredDoneTasks.length;
-  }
-
-  get totalVisibleTasksCount(): number {
-    return this.openTasksCount + this.inProgressTasksCount + this.doneTasksCount;
   }
 
   private filterByPriority(tasks: Task[]): Task[] {
@@ -169,274 +471,9 @@ export class TaskBoard implements OnInit {
     return sorted;
   }
 
-  getColumnTasks(column: ColumnId): Task[] {
-    if (column === 'todo') return this.todoTasks;
-    if (column === 'inProgress') return this.inProgressTasks;
-    return this.doneTasks;
-  }
-
-  getColumnArray(column: ColumnId): Task[] {
-    return this.getColumnTasks(column);
-  }
-
-  openAddTask(column: ColumnId): void {
-    this.addToColumn = column;
-    this.isEditMode = false;
-    this.editContext = null;
-    this.formTask = {
-      ...this.createEmptyTask(),
-      id: Date.now().toString(),
-      statusLabel: column === 'todo' ? 'Backlog' : column === 'inProgress' ? 'Active' : 'Ready to deploy',
-    };
-    this.showTaskForm = true;
-  }
-
-  openEditTask(task: Task, column: ColumnId, index: number): void {
-    const actualIndex = this.getColumnArray(column).findIndex((item) => item.id === task.id);
-    if (actualIndex < 0) return;
-    this.isEditMode = true;
-    this.editContext = { column, index: actualIndex };
-    this.formTask = { ...task };
-    this.showTaskForm = true;
-  }
-
-  saveTask(): void {
-    const t = this.formTask;
-    if (!t.title?.trim()) return;
-
-    if (this.isEditMode && this.editContext) {
-      const arr = this.getColumnArray(this.editContext.column);
-      arr[this.editContext.index] = { ...t };
-    } else {
-      const newTask: Task = {
-        ...this.createEmptyTask(),
-        ...t,
-        id: t.id || Date.now().toString(),
-        title: t.title.trim(),
-        description: t.description?.trim() ?? '',
-        statusLabel:
-          this.addToColumn === 'todo'
-            ? 'Backlog'
-            : this.addToColumn === 'inProgress'
-              ? 'Active'
-              : 'Ready to deploy',
-      };
-      this.getColumnArray(this.addToColumn).push(newTask);
-    }
-
-    if (this.priorityFilter !== 'All' && t.priority !== this.priorityFilter) {
-      this.priorityFilter = 'All';
-    }
-
-    this.saveToStorage();
-    this.cancelForm();
-  }
-
-  cancelForm(): void {
-    this.showTaskForm = false;
-    this.isEditMode = false;
-    this.editContext = null;
-    this.formTask = this.createEmptyTask();
-  }
-
-  deleteTask(column: ColumnId, index: number): void {
-    const arr = this.getColumnArray(column);
-    if (index >= 0 && index < arr.length) {
-      arr.splice(index, 1);
-      this.saveToStorage();
-    }
-  }
-
-  deleteTaskById(column: ColumnId, taskId: string): void {
-    const arr = this.getColumnArray(column);
-    const index = arr.findIndex((task) => task.id === taskId);
-    if (index >= 0) {
-      arr.splice(index, 1);
-      this.saveToStorage();
-    }
-  }
-
-  onDragStart(column: ColumnId, task: Task, event: DragEvent): void {
-    if (column === 'todo' && this.sortMode !== 'manual') {
-      this.sortMode = 'manual';
-    }
-    const index = this.getColumnTasks(column).findIndex((item) => item.id === task.id);
-    if (index < 0) return;
-    this.dragSource = { column, index, taskId: task.id };
-    this.draggingTaskId = task.id;
-    this.dropTargetColumn = column;
-    if (event.dataTransfer && task) {
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', JSON.stringify({ column, index, taskId: task.id }));
-      event.dataTransfer.setData('application/json', JSON.stringify({ column, index }));
-    }
-  }
-
-  onDragOver(event: DragEvent): void {
-    event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-  }
-
-  onColumnDragOver(column: ColumnId, event: DragEvent): void {
-    this.onDragOver(event);
-    this.dropTargetColumn = column;
-  }
-
-  onTaskDragOver(taskId: string, event: DragEvent): void {
-    this.onDragOver(event);
-    this.dropTargetTaskId = taskId;
-    this.dropTargetPlacement = this.shouldPlaceAfterTarget(event) ? 'after' : 'before';
-  }
-
-  onDrop(targetColumn: ColumnId, event: DragEvent): void {
-    event.preventDefault();
-    if (!this.dragSource) return;
-    const { column: sourceColumn, taskId: sourceTaskId } = this.dragSource;
-    const sourceArrayNow = this.getColumnTasks(sourceColumn);
-    const sourceIndex = sourceArrayNow.findIndex((task) => task.id === sourceTaskId);
-    if (sourceIndex < 0) {
-      this.clearDragState();
-      return;
-    }
-
-    if (sourceColumn === targetColumn) {
-      if (targetColumn === 'todo') {
-        if (this.sortMode !== 'manual') {
-          this.clearDragState();
-          return;
-        }
-        const todo = this.getColumnTasks('todo');
-        const [moved] = todo.splice(sourceIndex, 1);
-        if (moved) {
-          todo.push(moved);
-          this.saveToStorage();
-        }
-      }
-      this.clearDragState();
-      return;
-    }
-
-    const sourceList = this.getColumnTasks(sourceColumn);
-    const task = sourceList[sourceIndex];
-    if (!task) {
-      this.clearDragState();
-      return;
-    }
-
-    const targetArray =
-      targetColumn === 'todo'
-        ? this.todoTasks
-        : targetColumn === 'inProgress'
-          ? this.inProgressTasks
-          : this.doneTasks;
-    const sourceArray =
-      sourceColumn === 'todo'
-        ? this.todoTasks
-        : sourceColumn === 'inProgress'
-          ? this.inProgressTasks
-          : this.doneTasks;
-
-    sourceArray.splice(sourceIndex, 1);
-    const updatedTask = this.updateTaskStatusForColumn({ ...task }, targetColumn);
-    targetArray.push(updatedTask);
-    this.saveToStorage();
-    this.clearDragState();
-  }
-
-  onDropOnTask(targetColumn: ColumnId, targetTaskId: string, event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    if (!this.dragSource) return;
-    const { column: sourceColumn, taskId: sourceTaskId } = this.dragSource;
-    const placeAfterTarget = this.shouldPlaceAfterTarget(event);
-
-    const sourceArray = this.getColumnTasks(sourceColumn);
-    const targetArray = this.getColumnTasks(targetColumn);
-    const sourceIndex = sourceArray.findIndex((task) => task.id === sourceTaskId);
-    const sourceTask = sourceArray[sourceIndex];
-    if (!sourceTask) {
-      this.clearDragState();
-      return;
-    }
-
-    const targetIndex = targetArray.findIndex((task) => task.id === targetTaskId);
-    if (targetIndex < 0) {
-      this.clearDragState();
-      return;
-    }
-
-    if (sourceColumn === targetColumn) {
-      if (targetColumn !== 'todo') {
-        this.clearDragState();
-        return;
-      }
-      if (this.sortMode !== 'manual') {
-        this.clearDragState();
-        return;
-      }
-
-      if (sourceTaskId === targetTaskId) {
-        this.clearDragState();
-        return;
-      }
-
-      if (this.priorityFilter === 'All') {
-        this.moveTaskById(sourceArray, sourceTaskId, targetTaskId, placeAfterTarget);
-      } else {
-        // Reorder only the visible (filtered) todo tasks and keep hidden tasks in-place.
-        this.reorderVisibleTodoTasks(sourceTaskId, targetTaskId, placeAfterTarget);
-      }
-
-      this.saveToStorage();
-      this.clearDragState();
-      return;
-    }
-
-    sourceArray.splice(sourceIndex, 1);
-    const updatedTask = this.updateTaskStatusForColumn({ ...sourceTask }, targetColumn);
-    const insertIndex = placeAfterTarget ? targetIndex + 1 : targetIndex;
-    targetArray.splice(insertIndex, 0, updatedTask);
-    this.saveToStorage();
-    this.clearDragState();
-  }
-
-  onDragEnd(): void {
-    this.clearDragState();
-  }
-
-  private updateTaskStatusForColumn(task: Task, column: ColumnId): Task {
-    if (column === 'todo') {
-      task.statusLabel = 'Backlog';
-    } else if (column === 'inProgress') {
-      task.statusLabel = 'Active';
-    } else {
-      task.statusLabel = 'Ready to deploy';
-    }
+  private updateTaskStatusForColumn(task: Task, columnId: string): Task {
+    task.statusLabel = this.getColumnStatusLabel(columnId);
     return task;
-  }
-
-  private reorderVisibleTodoTasks(sourceTaskId: string, targetTaskId: string, placeAfterTarget: boolean): void {
-    if (this.priorityFilter === 'All') return;
-
-    const visibleTasks = this.todoTasks.filter((task) => task.priority === this.priorityFilter);
-    const visibleTaskIds = visibleTasks.map((task) => task.id);
-    const moved = this.moveTaskId(visibleTaskIds, sourceTaskId, targetTaskId, placeAfterTarget);
-    if (!moved) {
-      return;
-    }
-
-    const taskMap = new Map(this.todoTasks.map((task) => [task.id, task]));
-
-    let visiblePointer = 0;
-    for (let i = 0; i < this.todoTasks.length; i += 1) {
-      if (this.todoTasks[i].priority === this.priorityFilter) {
-        const nextTask = taskMap.get(visibleTaskIds[visiblePointer]);
-        if (nextTask) {
-          this.todoTasks[i] = nextTask;
-        }
-        visiblePointer += 1;
-      }
-    }
   }
 
   private moveTaskById(tasks: Task[], sourceTaskId: string, targetTaskId: string, placeAfterTarget: boolean): boolean {
@@ -459,22 +496,6 @@ export class TaskBoard implements OnInit {
     return true;
   }
 
-  private moveTaskId(taskIds: string[], sourceTaskId: string, targetTaskId: string, placeAfterTarget: boolean): boolean {
-    const sourceIndex = taskIds.indexOf(sourceTaskId);
-    const targetIndex = taskIds.indexOf(targetTaskId);
-    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
-      return false;
-    }
-
-    taskIds.splice(sourceIndex, 1);
-    let insertIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
-    if (placeAfterTarget) {
-      insertIndex += 1;
-    }
-    taskIds.splice(insertIndex, 0, sourceTaskId);
-    return true;
-  }
-
   private shouldPlaceAfterTarget(event: DragEvent): boolean {
     const targetEl = event.currentTarget as HTMLElement | null;
     if (!targetEl) return false;
@@ -487,6 +508,6 @@ export class TaskBoard implements OnInit {
     this.draggingTaskId = null;
     this.dropTargetTaskId = null;
     this.dropTargetPlacement = null;
-    this.dropTargetColumn = null;
+    this.dropTargetColumnId = null;
   }
 }
