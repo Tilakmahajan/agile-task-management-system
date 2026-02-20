@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import toastr from 'toastr';
 
 export interface Task {
   id: string;
@@ -48,6 +49,14 @@ export class TaskBoard implements OnInit {
   addToColumnId = 'todo';
   editContext: { columnId: string; index: number } | null = null;
 
+  // Delete confirmation dialog
+  showDeleteConfirm = false;
+  deleteContext: { columnId: string; taskId: string; taskTitle: string } | null = null;
+
+  // Column removal confirmation dialog
+  showRemoveColumnConfirm = false;
+  removeColumnContext: { columnId: string; columnTitle: string; taskCount: number } | null = null;
+
   formTask: Task = this.createEmptyTask();
   newColumnTitle = '';
 
@@ -59,6 +68,26 @@ export class TaskBoard implements OnInit {
 
   ngOnInit(): void {
     this.loadFromStorage();
+    this.configureToastr();
+  }
+
+  private configureToastr(): void {
+    (toastr as any).options = {
+      closeButton: true,
+      debug: false,
+      newestOnTop: true,
+      progressBar: true,
+      positionClass: 'toast-top-right',
+      preventDuplicates: true,
+      showDuration: 300,
+      hideDuration: 1000,
+      timeOut: 3000,
+      extendedTimeOut: 1000,
+      showEasing: 'swing',
+      hideEasing: 'linear',
+      showMethod: 'fadeIn',
+      hideMethod: 'fadeOut',
+    };
   }
 
   get openTasksCount(): number {
@@ -136,6 +165,7 @@ export class TaskBoard implements OnInit {
         statusLabel: targetColumn.statusLabel,
       };
       targetColumn.tasks.push(newTask);
+      (toastr as any).success('Task added successfully!', 'Success');
     }
 
     if (this.priorityFilter !== 'All' && t.priority !== this.priorityFilter) {
@@ -153,13 +183,76 @@ export class TaskBoard implements OnInit {
     this.formTask = this.createEmptyTask();
   }
 
+  // Task delete confirmation methods
+  confirmDeleteTask(columnId: string, taskId: string, event: Event): void {
+    event.stopPropagation();
+    const arr = this.getColumnTasks(columnId);
+    const task = arr.find((t) => t.id === taskId);
+    if (task) {
+      this.deleteContext = { columnId, taskId, taskTitle: task.title };
+      this.showDeleteConfirm = true;
+    }
+  }
+
+  cancelDelete(): void {
+    this.showDeleteConfirm = false;
+    this.deleteContext = null;
+  }
+
+  executeDelete(): void {
+    if (!this.deleteContext) return;
+    
+    const { columnId, taskId } = this.deleteContext;
+    const arr = this.getColumnTasks(columnId);
+    const index = arr.findIndex((task) => task.id === taskId);
+    
+    if (index >= 0) {
+      arr.splice(index, 1);
+      this.saveToStorage();
+      (toastr as any).warning('Task has been deleted!', 'Alert');
+    }
+    
+    this.showDeleteConfirm = false;
+    this.deleteContext = null;
+  }
+
   deleteTaskById(columnId: string, taskId: string): void {
     const arr = this.getColumnTasks(columnId);
     const index = arr.findIndex((task) => task.id === taskId);
     if (index >= 0) {
       arr.splice(index, 1);
       this.saveToStorage();
+      (toastr as any).warning('Task has been deleted!', 'Alert');
     }
+  }
+
+  // Column removal confirmation methods
+  confirmRemoveColumn(columnId: string, event: Event): void {
+    event.stopPropagation();
+    const column = this.getColumnById(columnId);
+    if (column) {
+      this.removeColumnContext = { 
+        columnId, 
+        columnTitle: column.title, 
+        taskCount: column.tasks.length 
+      };
+      this.showRemoveColumnConfirm = true;
+    }
+  }
+
+  cancelRemoveColumn(): void {
+    this.showRemoveColumnConfirm = false;
+    this.removeColumnContext = null;
+  }
+
+  executeRemoveColumn(): void {
+    if (!this.removeColumnContext) return;
+    
+    const { columnId } = this.removeColumnContext;
+    this.performRemoveColumn(columnId);
+    
+    this.showRemoveColumnConfirm = false;
+    this.removeColumnContext = null;
   }
 
   addColumn(): void {
@@ -179,9 +272,14 @@ export class TaskBoard implements OnInit {
     this.columns.push(column);
     this.newColumnTitle = '';
     this.saveToStorage();
+    (toastr as any).success('Column "' + title + '" added successfully!', 'Success');
   }
 
   removeColumn(columnId: string): void {
+    this.confirmRemoveColumn(columnId, new Event('click'));
+  }
+
+  private performRemoveColumn(columnId: string): void {
     if (this.columns.length <= 1) return;
 
     const removeIndex = this.columns.findIndex((column) => column.id === columnId);
@@ -207,6 +305,7 @@ export class TaskBoard implements OnInit {
     }
 
     this.saveToStorage();
+    (toastr as any).warning('Column "' + removed.title + '" has been removed!', 'Alert');
   }
 
   onDragStart(columnId: string, task: Task, event: DragEvent): void {

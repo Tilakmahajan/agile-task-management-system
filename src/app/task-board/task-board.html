@@ -139,7 +139,7 @@
                 </span>
                 <button
                   type="button"
-                  (click)="removeColumn(column.id)"
+                  (click)="confirmRemoveColumn(column.id, $event)"
                   [disabled]="!canRemoveColumns"
                   class="rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Remove column"
@@ -201,7 +201,7 @@
                     <button
                       type="button"
                       class="delete-btn rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-100 min-h-[40px] touch-manipulation"
-                      (click)="deleteTaskById(column.id, task.id); $event.stopPropagation()"
+                      (click)="confirmDeleteTask(column.id, task.id, $event)"
                       title="Delete task"
                     >
                       Delete
@@ -298,6 +298,78 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  }
+
+  <!-- Task Delete Confirmation Dialog -->
+  @if (showDeleteConfirm) {
+    <div class="delete-confirm-overlay" (click)="cancelDelete()">
+      <div class="delete-confirm-modal" (click)="$event.stopPropagation()">
+        <div class="delete-confirm-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h3 class="delete-confirm-title">Are you sure?</h3>
+        <p class="delete-confirm-message">
+          Are you sure you want to delete the task "<strong>{{ deleteContext?.taskTitle }}</strong>"? This action cannot be undone.
+        </p>
+        <div class="delete-confirm-actions">
+          <button
+            type="button"
+            (click)="cancelDelete()"
+            class="cancel-delete-btn"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            (click)="executeDelete()"
+            class="confirm-delete-btn"
+          >
+            Yes, Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Column Remove Confirmation Dialog -->
+  @if (showRemoveColumnConfirm) {
+    <div class="delete-confirm-overlay" (click)="cancelRemoveColumn()">
+      <div class="delete-confirm-modal" (click)="$event.stopPropagation()">
+        <div class="delete-confirm-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h3 class="delete-confirm-title">Remove Column?</h3>
+        <p class="delete-confirm-message">
+          Are you sure you want to remove the column "<strong>{{ removeColumnContext?.columnTitle }}</strong>"?
+          @if (removeColumnContext && removeColumnContext.taskCount > 0) {
+            <br/><br/>
+            This column contains <strong>{{ removeColumnContext.taskCount }} task(s)</strong> that will be moved to another column.
+          }
+          <br/><br/>
+          This action cannot be undone.
+        </p>
+        <div class="delete-confirm-actions">
+          <button
+            type="button"
+            (click)="cancelRemoveColumn()"
+            class="cancel-delete-btn"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            (click)="executeRemoveColumn()"
+            class="confirm-delete-btn"
+          >
+            Yes, Remove
+          </button>
+        </div>
       </div>
     </div>
   }

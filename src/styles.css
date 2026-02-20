@@ -2,3 +2,249 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Toastr Custom Styles */
+#toast-container {
+  position: fixed;
+  z-index: 9999;
+  top: 1rem;
+  right: 1rem;
+}
+
+.toast {
+  background-color: #fff;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  opacity: 1;
+  transition: all 0.3s ease-in-out;
+}
+
+.toast.toast-success {
+  border-left: 4px solid #10b981;
+  background-color: #ecfdf5;
+}
+
+.toast.toast-success .toast-title {
+  color: #065f46;
+  font-weight: 600;
+}
+
+.toast.toast-success .toast-message {
+  color: #047857;
+}
+
+.toast.toast-warning {
+  border-left: 4px solid #f59e0b;
+  background-color: #fffbeb;
+}
+
+.toast.toast-warning .toast-title {
+  color: #92400e;
+  font-weight: 600;
+}
+
+.toast.toast-warning .toast-message {
+  color: #b45309;
+}
+
+.toast-title {
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.toast-message {
+  font-size: 0.75rem;
+}
+
+#toast-container > .toast {
+  background-position: 1rem center;
+  padding: 1rem 1rem 1rem 3rem;
+}
+
+.toast-top-right {
+  top: 1rem;
+  right: 1rem;
+}
+
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  transition: width 0.3s ease;
+}
+
+.toast-success .toast-progress {
+  background-color: #10b981;
+}
+
+.toast-warning .toast-progress {
+  background-color: #f59e0b;
+}
+
+.toast-close-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.toast-close-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+@keyframes toastr-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastr-fade-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.toast {
+  animation: toastr-fade-in 0.3s ease-in-out;
+}
+
+.toast.toast-hiding {
+  animation: toastr-fade-out 0.3s ease-in-out forwards;
+}
+
+/* Delete Confirmation Dialog Styles */
+.delete-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.delete-confirm-modal {
+  background-color: white;
+  border-radius: 1rem;
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  text-align: center;
+  animation: slideUp 0.3s ease-out;
+}
+
+.delete-confirm-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+  color: #f59e0b;
+}
+
+.delete-confirm-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.delete-confirm-message {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.delete-confirm-message strong {
+  color: #1f2937;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.cancel-delete-btn {
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid #d1d5db;
+  background-color: white;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-delete-btn:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.confirm-delete-btn {
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  background-color: #ef4444;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.confirm-delete-btn:hover {
+  background-color: #dc2626;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
