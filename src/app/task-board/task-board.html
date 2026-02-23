@@ -63,58 +63,29 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div class="stats-card rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
-          <div class="flex items-center justify-between text-xs font-medium text-neutral-500">
-            <span>Open tasks</span>
-            <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600">Backlog size</span>
+      <!-- Shared horizontal scroll wrapper -->
+      <div class="overflow-x-auto pb-4 scrollbar-thin">
+        <div class="inline-flex flex-col gap-4 sm:gap-6 min-w-full">
+          <div class="board-grid">
+            @for (stat of statsColumns; track $index) {
+          <div class="stats-card rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
+            <div class="flex items-center justify-between text-xs font-medium text-neutral-500">
+              <span>{{ stat.title }}</span>
+              <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600">{{ stat.statusLabel }}</span>
+            </div>
+            <div class="mt-2 flex items-end gap-2">
+              <p class="text-2xl font-semibold text-neutral-900">{{ stat.count }}</p>
+              <p class="pb-0.5 text-xs text-neutral-500">{{ stat.isFirst ? 'items' : (stat.isLast ? 'completed' : 'active') }}</p>
+            </div>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-200">
+              <div class="h-full rounded-full bg-neutral-500 transition-all duration-300" [style.width.%]="(stat.count / (totalVisibleTasksCount || 1)) * 100"></div>
+            </div>
           </div>
-          <div class="mt-2 flex items-end gap-2">
-            <p class="text-2xl font-semibold text-neutral-900">{{ openTasksCount }}</p>
-            <p class="pb-0.5 text-xs text-neutral-500">items</p>
+        }
           </div>
-          <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-200">
-            <div class="h-full rounded-full bg-neutral-500 transition-all duration-300" [style.width.%]="(openTasksCount / (totalVisibleTasksCount || 1)) * 100"></div>
-          </div>
-        </div>
 
-        <div class="stats-card rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
-          <div class="flex items-center justify-between text-xs font-medium text-neutral-500">
-            <span>In progress</span>
-            <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600">Flow load</span>
-          </div>
-          <div class="mt-2 flex items-end gap-2">
-            <p class="text-2xl font-semibold text-neutral-900">{{ inProgressTasksCount }}</p>
-            <p class="pb-0.5 text-xs text-neutral-500">active</p>
-          </div>
-          <div class="mt-2 flex items-center gap-2 text-xs">
-            <span class="h-2 w-2 rounded-full bg-neutral-400"></span>
-            <span class="text-neutral-500">Healthy work-in-progress</span>
-          </div>
-        </div>
-
-        <div class="stats-card rounded-xl border border-neutral-200/90 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm">
-          <div class="flex items-center justify-between text-xs font-medium text-neutral-500">
-            <span>Done this sprint</span>
-            <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-700">Throughput</span>
-          </div>
-          <div class="mt-2 flex items-end gap-2">
-            <p class="text-2xl font-semibold text-neutral-900">{{ doneTasksCount }}</p>
-            <p class="pb-0.5 text-xs text-neutral-500">completed</p>
-          </div>
-          <div class="mt-2 flex items-center gap-3 text-[11px] text-neutral-700">
-            <span class="inline-flex items-center gap-1 rounded-md bg-neutral-100 px-2 py-0.5">
-              <span class="h-1.5 w-1.5 rounded-full bg-neutral-500"></span>
-              On track
-            </span>
-            <span class="text-neutral-500">Keep shipping small, frequent updates.</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- horizontal scroll wrapper -->
-      <div class="board-grid">
-        @for (column of columns; track trackColumn($index, column)) {
+          <div class="board-grid">
+            @for (column of columns; track trackColumn($index, column)) {
           <section
             class="board-column flex min-h-[240px] flex-col gap-3 rounded-xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
             [class.todo-column]="column.accent === 'todo'"
@@ -225,6 +196,8 @@
             }
           </section>
         }
+          </div>
+        </div>
       </div>
     </div>
   </div>

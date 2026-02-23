@@ -90,16 +90,63 @@ export class TaskBoard implements OnInit {
     };
   }
 
+  // Dynamic column getters for stats
+  get firstColumn(): BoardColumn | undefined {
+    return this.columns[0];
+  }
+
+  get lastColumn(): BoardColumn | undefined {
+    return this.columns[this.columns.length - 1];
+  }
+
+  get middleColumns(): BoardColumn[] {
+    if (this.columns.length <= 2) return [];
+    return this.columns.slice(1, -1);
+  }
+
   get openTasksCount(): number {
-    return this.getFilteredTasksById('todo').length;
+    const firstCol = this.firstColumn;
+    return firstCol ? this.getFilteredTasks(firstCol).length : 0;
   }
 
   get inProgressTasksCount(): number {
-    return this.getFilteredTasksById('inProgress').length;
+    // Get tasks from middle columns (if any) or use 'inProgress' column if exists
+    const inProgressCol = this.columns.find(c => c.id === 'inProgress' || c.id === 'inprogress');
+    if (inProgressCol) {
+      return this.getFilteredTasks(inProgressCol).length;
+    }
+    // Fallback: sum of all middle columns
+    return this.middleColumns.reduce((sum, col) => sum + this.getFilteredTasks(col).length, 0);
   }
 
   get doneTasksCount(): number {
-    return this.getFilteredTasksById('done').length;
+    const lastCol = this.lastColumn;
+    return lastCol ? this.getFilteredTasks(lastCol).length : 0;
+  }
+
+  // Dynamic stats columns - returns array matching the number of columns
+  get statsColumns(): { title: string; count: number; statusLabel: string; accent: string; isFirst: boolean; isLast: boolean }[] {
+    return this.columns.map((column, index) => {
+      let accent = column.accent;
+      
+      // Determine accent based on column position
+      if (index === 0) {
+        accent = 'todo';
+      } else if (index === this.columns.length - 1) {
+        accent = 'done';
+      } else {
+        accent = 'progress';
+      }
+      
+      return {
+        title: column.title,
+        count: this.getFilteredTasks(column).length,
+        statusLabel: column.statusLabel,
+        accent: accent,
+        isFirst: index === 0,
+        isLast: index === this.columns.length - 1
+      };
+    });
   }
 
   get totalVisibleTasksCount(): number {
