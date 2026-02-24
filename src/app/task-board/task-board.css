@@ -91,6 +91,9 @@
 
 /* ensure on very narrow screens they can still stack if needed */
 @media (max-width: 639px) {
+  .board-grid {
+    flex-direction: column;
+  }
 
   .board-grid>section,
   .board-grid>.stats-card {
@@ -116,17 +119,29 @@
   transform: translateY(-3px);
 }
 
+.drop-before-column {
+  box-shadow: -4px 0 0 0 inset var(--primary-600) !important;
+}
+
+.drop-after-column {
+  box-shadow: 4px 0 0 0 inset var(--primary-600) !important;
+}
+
 .todo-column,
 .progress-column,
-.done-column {
-  max-height: min(78vh, 720px);
+.done-column,
+.custom-column {
+  max-height: min(85vh, 800px);
   overflow: hidden;
 }
 
 .task-list-scroll {
   flex: 1 1 auto;
   min-height: 0;
+  max-height: 480px;
+  /* Approximately height of 3 task cards plus spacing */
   overflow-y: auto;
+  scrollbar-width: thin;
   padding-right: 0.25rem;
 }
 

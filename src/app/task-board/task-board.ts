@@ -43,6 +43,7 @@ export class TaskBoard implements OnInit {
 
   priorityFilter: PriorityFilter = 'All';
   sortMode: SortMode = 'manual';
+  searchQuery: string = '';
 
   showTaskForm = false;
   isEditMode = false;
@@ -65,6 +66,9 @@ export class TaskBoard implements OnInit {
   dropTargetTaskId: string | null = null;
   dropTargetPlacement: 'before' | 'after' | null = null;
   dropTargetColumnId: string | null = null;
+
+  draggingColumnId: string | null = null;
+  dropTargetColumnPlacement: 'before' | 'after' | null = null;
 
   ngOnInit(): void {
     this.loadFromStorage();
@@ -128,7 +132,7 @@ export class TaskBoard implements OnInit {
   get statsColumns(): { title: string; count: number; statusLabel: string; accent: string; isFirst: boolean; isLast: boolean }[] {
     return this.columns.map((column, index) => {
       let accent = column.accent;
-      
+
       // Determine accent based on column position
       if (index === 0) {
         accent = 'todo';
@@ -137,7 +141,7 @@ export class TaskBoard implements OnInit {
       } else {
         accent = 'progress';
       }
-      
+
       return {
         title: column.title,
         count: this.getFilteredTasks(column).length,
@@ -162,7 +166,7 @@ export class TaskBoard implements OnInit {
   }
 
   getFilteredTasks(column: BoardColumn): Task[] {
-    return this.sortTasks(this.filterByPriority(column.tasks));
+    return this.sortTasks(this.filterByPriority(this.filterBySearch(column.tasks)));
   }
 
   getColumnTasks(columnId: string): Task[] {
@@ -248,17 +252,17 @@ export class TaskBoard implements OnInit {
 
   executeDelete(): void {
     if (!this.deleteContext) return;
-    
+
     const { columnId, taskId } = this.deleteContext;
     const arr = this.getColumnTasks(columnId);
     const index = arr.findIndex((task) => task.id === taskId);
-    
+
     if (index >= 0) {
       arr.splice(index, 1);
       this.saveToStorage();
       (toastr as any).warning('Task has been deleted!', 'Alert');
     }
-    
+
     this.showDeleteConfirm = false;
     this.deleteContext = null;
   }
@@ -278,10 +282,10 @@ export class TaskBoard implements OnInit {
     event.stopPropagation();
     const column = this.getColumnById(columnId);
     if (column) {
-      this.removeColumnContext = { 
-        columnId, 
-        columnTitle: column.title, 
-        taskCount: column.tasks.length 
+      this.removeColumnContext = {
+        columnId,
+        columnTitle: column.title,
+        taskCount: column.tasks.length
       };
       this.showRemoveColumnConfirm = true;
     }
@@ -294,10 +298,10 @@ export class TaskBoard implements OnInit {
 
   executeRemoveColumn(): void {
     if (!this.removeColumnContext) return;
-    
+
     const { columnId } = this.removeColumnContext;
     this.performRemoveColumn(columnId);
-    
+
     this.showRemoveColumnConfirm = false;
     this.removeColumnContext = null;
   }
@@ -378,9 +382,29 @@ export class TaskBoard implements OnInit {
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
   }
 
+  onColumnDragStart(columnId: string, event: DragEvent): void {
+    if (this.sortMode !== 'manual') {
+      this.sortMode = 'manual';
+    }
+    this.draggingColumnId = columnId;
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', JSON.stringify({ isColumn: true, columnId }));
+    }
+  }
+
   onColumnDragOver(columnId: string, event: DragEvent): void {
     this.onDragOver(event);
     this.dropTargetColumnId = columnId;
+
+    // Determine before/after placement for column drop
+    if (this.draggingColumnId) {
+      const targetEl = event.currentTarget as HTMLElement | null;
+      if (targetEl) {
+        const rect = targetEl.getBoundingClientRect();
+        this.dropTargetColumnPlacement = event.clientX > rect.left + rect.width / 2 ? 'after' : 'before';
+      }
+    }
   }
 
   onTaskDragOver(taskId: string, event: DragEvent): void {
@@ -391,6 +415,29 @@ export class TaskBoard implements OnInit {
 
   onDrop(targetColumnId: string, event: DragEvent): void {
     event.preventDefault();
+
+    // Handle Column Drop
+    if (this.draggingColumnId) {
+      const sourceId = this.draggingColumnId;
+      if (sourceId !== targetColumnId) {
+        const sourceIndex = this.columns.findIndex(c => c.id === sourceId);
+        const targetIndex = this.columns.findIndex(c => c.id === targetColumnId);
+
+        if (sourceIndex >= 0 && targetIndex >= 0) {
+          const [moved] = this.columns.splice(sourceIndex, 1);
+          let insertIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+          if (this.dropTargetColumnPlacement === 'after') {
+            insertIndex += 1;
+          }
+          this.columns.splice(insertIndex, 0, moved);
+          this.saveToStorage();
+        }
+      }
+      this.clearDragState();
+      return;
+    }
+
+    // Handle Task Drop into empty column area
     if (!this.dragSource) return;
 
     const { columnId: sourceColumnId, taskId: sourceTaskId } = this.dragSource;
@@ -596,6 +643,16 @@ export class TaskBoard implements OnInit {
     return tasks.filter((task) => task.priority === this.priorityFilter);
   }
 
+  private filterBySearch(tasks: Task[]): Task[] {
+    if (!this.searchQuery.trim()) return tasks;
+    const query = this.searchQuery.toLowerCase().trim();
+    return tasks.filter(
+      (task) =>
+        task.title.toLowerCase().includes(query) ||
+        task.description.toLowerCase().includes(query)
+    );
+  }
+
   private sortTasks(tasks: Task[]): Task[] {
     if (this.sortMode === 'manual') return tasks;
 
@@ -655,5 +712,7 @@ export class TaskBoard implements OnInit {
     this.dropTargetTaskId = null;
     this.dropTargetPlacement = null;
     this.dropTargetColumnId = null;
+    this.draggingColumnId = null;
+    this.dropTargetColumnPlacement = null;
   }
 }
