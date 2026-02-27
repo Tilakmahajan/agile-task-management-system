@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import toastr from 'toastr';
+import { AuthService } from '../services/auth.service';
 
 export interface Task {
   id: string;
@@ -39,6 +40,9 @@ const STORAGE_KEY = 'agile-task-board';
   styleUrl: './task-board.css',
 })
 export class TaskBoard implements OnInit {
+  private authService = inject(AuthService);
+  user$ = this.authService.user$;
+
   columns: BoardColumn[] = [];
 
   priorityFilter: PriorityFilter = 'All';
@@ -73,6 +77,10 @@ export class TaskBoard implements OnInit {
   ngOnInit(): void {
     this.loadFromStorage();
     this.configureToastr();
+  }
+
+  async logout(): Promise<void> {
+    await this.authService.logout();
   }
 
   private configureToastr(): void {
@@ -196,34 +204,40 @@ export class TaskBoard implements OnInit {
     this.showTaskForm = true;
   }
 
-  saveTask(): void {
+  async saveTask(): Promise<void> {
     const t = this.formTask;
     if (!t.title?.trim()) return;
 
-    if (this.isEditMode && this.editContext) {
-      const arr = this.getColumnTasks(this.editContext.columnId);
-      arr[this.editContext.index] = { ...t, title: t.title.trim(), description: t.description?.trim() ?? '' };
-    } else {
-      const targetColumn = this.getColumnById(this.addToColumnId);
-      if (!targetColumn) return;
+    try {
+      if (this.isEditMode && this.editContext) {
+        const arr = this.getColumnTasks(this.editContext.columnId);
+        arr[this.editContext.index] = { ...t, title: t.title.trim(), description: t.description?.trim() ?? '' };
+        (toastr as any).success('Task updated successfully!', 'Success');
+      } else {
+        const targetColumn = this.getColumnById(this.addToColumnId);
+        if (!targetColumn) return;
 
-      const newTask: Task = {
-        ...this.createEmptyTask(),
-        ...t,
-        id: t.id || Date.now().toString(),
-        title: t.title.trim(),
-        description: t.description?.trim() ?? '',
-        statusLabel: targetColumn.statusLabel,
-      };
-      targetColumn.tasks.push(newTask);
-      (toastr as any).success('Task added successfully!', 'Success');
+        const newTask: Task = {
+          ...this.createEmptyTask(),
+          ...t,
+          id: t.id || Date.now().toString(),
+          title: t.title.trim(),
+          description: t.description?.trim() ?? '',
+          statusLabel: targetColumn.statusLabel,
+        };
+        targetColumn.tasks.push(newTask);
+        (toastr as any).success('Task added successfully!', 'Success');
+      }
+
+      if (this.priorityFilter !== 'All' && t.priority !== this.priorityFilter) {
+        this.priorityFilter = 'All';
+      }
+
+      this.saveToStorage();
+    } catch (error) {
+      console.error('Error saving task:', error);
+      (toastr as any).error('Failed to save task', 'Error');
     }
-
-    if (this.priorityFilter !== 'All' && t.priority !== this.priorityFilter) {
-      this.priorityFilter = 'All';
-    }
-
-    this.saveToStorage();
     this.cancelForm();
   }
 
@@ -250,30 +264,40 @@ export class TaskBoard implements OnInit {
     this.deleteContext = null;
   }
 
-  executeDelete(): void {
+  async executeDelete(): Promise<void> {
     if (!this.deleteContext) return;
 
-    const { columnId, taskId } = this.deleteContext;
-    const arr = this.getColumnTasks(columnId);
-    const index = arr.findIndex((task) => task.id === taskId);
+    try {
+      const { columnId, taskId } = this.deleteContext;
+      const arr = this.getColumnTasks(columnId);
+      const index = arr.findIndex((task) => task.id === taskId);
 
-    if (index >= 0) {
-      arr.splice(index, 1);
-      this.saveToStorage();
-      (toastr as any).warning('Task has been deleted!', 'Alert');
+      if (index >= 0) {
+        arr.splice(index, 1);
+        this.saveToStorage();
+        (toastr as any).warning('Task has been deleted!', 'Alert');
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      (toastr as any).error('Failed to delete task', 'Error');
     }
 
     this.showDeleteConfirm = false;
     this.deleteContext = null;
   }
 
-  deleteTaskById(columnId: string, taskId: string): void {
+  async deleteTaskById(columnId: string, taskId: string): Promise<void> {
     const arr = this.getColumnTasks(columnId);
     const index = arr.findIndex((task) => task.id === taskId);
     if (index >= 0) {
       arr.splice(index, 1);
-      this.saveToStorage();
-      (toastr as any).warning('Task has been deleted!', 'Alert');
+      try {
+        this.saveToStorage();
+        (toastr as any).warning('Task has been deleted!', 'Alert');
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        (toastr as any).error('Failed to delete task', 'Error');
+      }
     }
   }
 
@@ -306,24 +330,29 @@ export class TaskBoard implements OnInit {
     this.removeColumnContext = null;
   }
 
-  addColumn(): void {
+  async addColumn(): Promise<void> {
     const title = this.newColumnTitle.trim();
     if (!title) return;
 
-    const id = this.createColumnId(title);
-    const column: BoardColumn = {
-      id,
-      title,
-      statusLabel: title,
-      accent: 'custom',
-      tasks: [],
-      isDefault: false,
-    };
+    try {
+      const id = this.createColumnId(title);
+      const column: BoardColumn = {
+        id,
+        title,
+        statusLabel: title,
+        accent: 'custom',
+        tasks: [],
+        isDefault: false,
+      };
 
-    this.columns.push(column);
-    this.newColumnTitle = '';
-    this.saveToStorage();
-    (toastr as any).success('Column "' + title + '" added successfully!', 'Success');
+      this.columns.push(column);
+      this.newColumnTitle = '';
+      this.saveToStorage();
+      (toastr as any).success('Column "' + title + '" added successfully!', 'Success');
+    } catch (error) {
+      console.error('Error adding column:', error);
+      (toastr as any).error('Failed to add column', 'Error');
+    }
   }
 
   removeColumn(columnId: string): void {
@@ -333,30 +362,35 @@ export class TaskBoard implements OnInit {
   private performRemoveColumn(columnId: string): void {
     if (this.columns.length <= 1) return;
 
-    const removeIndex = this.columns.findIndex((column) => column.id === columnId);
-    if (removeIndex < 0) return;
+    try {
+      const removeIndex = this.columns.findIndex((column) => column.id === columnId);
+      if (removeIndex < 0) return;
 
-    const removed = this.columns[removeIndex];
-    const fallback = this.columns.find((column) => column.id !== columnId);
+      const removed = this.columns[removeIndex];
+      const fallback = this.columns.find((column) => column.id !== columnId);
 
-    if (fallback && removed.tasks.length) {
-      removed.tasks.forEach((task) => {
-        fallback.tasks.push({ ...task, statusLabel: fallback.statusLabel });
-      });
+      if (fallback && removed.tasks.length) {
+        removed.tasks.forEach((task) => {
+          fallback.tasks.push({ ...task, statusLabel: fallback.statusLabel });
+        });
+      }
+
+      this.columns.splice(removeIndex, 1);
+
+      if (this.addToColumnId === columnId) {
+        this.addToColumnId = this.columns[0]?.id ?? 'todo';
+      }
+
+      if (this.editContext?.columnId === columnId) {
+        this.cancelForm();
+      }
+
+      this.saveToStorage();
+      (toastr as any).warning('Column "' + removed.title + '" has been removed!', 'Alert');
+    } catch (error) {
+      console.error('Error removing column:', error);
+      (toastr as any).error('Failed to remove column', 'Error');
     }
-
-    this.columns.splice(removeIndex, 1);
-
-    if (this.addToColumnId === columnId) {
-      this.addToColumnId = this.columns[0]?.id ?? 'todo';
-    }
-
-    if (this.editContext?.columnId === columnId) {
-      this.cancelForm();
-    }
-
-    this.saveToStorage();
-    (toastr as any).warning('Column "' + removed.title + '" has been removed!', 'Alert');
   }
 
   onDragStart(columnId: string, task: Task, event: DragEvent): void {
@@ -413,94 +447,116 @@ export class TaskBoard implements OnInit {
     this.dropTargetPlacement = this.shouldPlaceAfterTarget(event) ? 'after' : 'before';
   }
 
-  onDrop(targetColumnId: string, event: DragEvent): void {
+  async onDrop(targetColumnId: string, event: DragEvent): Promise<void> {
     event.preventDefault();
 
-    // Handle Column Drop
-    if (this.draggingColumnId) {
-      const sourceId = this.draggingColumnId;
-      if (sourceId !== targetColumnId) {
-        const sourceIndex = this.columns.findIndex(c => c.id === sourceId);
-        const targetIndex = this.columns.findIndex(c => c.id === targetColumnId);
+    try {
+      // Handle Column Drop
+      if (this.draggingColumnId) {
+        const sourceId = this.draggingColumnId;
+        if (sourceId !== targetColumnId) {
+          const sourceIndex = this.columns.findIndex(c => c.id === sourceId);
+          const targetIndex = this.columns.findIndex(c => c.id === targetColumnId);
 
-        if (sourceIndex >= 0 && targetIndex >= 0) {
-          const [moved] = this.columns.splice(sourceIndex, 1);
-          let insertIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
-          if (this.dropTargetColumnPlacement === 'after') {
-            insertIndex += 1;
+          if (sourceIndex >= 0 && targetIndex >= 0) {
+            const [moved] = this.columns.splice(sourceIndex, 1);
+            let insertIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+            if (this.dropTargetColumnPlacement === 'after') {
+              insertIndex += 1;
+            }
+            this.columns.splice(insertIndex, 0, moved);
+            this.saveToStorage();
           }
-          this.columns.splice(insertIndex, 0, moved);
-          this.saveToStorage();
+        }
+        this.clearDragState();
+        return;
+      }
+
+      // Handle Task Drop into empty column area
+      if (!this.dragSource) return;
+
+      const { columnId: sourceColumnId, taskId: sourceTaskId } = this.dragSource;
+      const sourceArray = this.getColumnTasks(sourceColumnId);
+      const sourceIndex = sourceArray.findIndex((task) => task.id === sourceTaskId);
+      if (sourceIndex < 0) {
+        this.clearDragState();
+        return;
+      }
+
+      const [moved] = sourceArray.splice(sourceIndex, 1);
+      if (!moved) {
+        this.clearDragState();
+        return;
+      }
+
+      const targetArray = this.getColumnTasks(targetColumnId);
+      const updatedTask = this.updateTaskStatusForColumn({ ...moved }, targetColumnId);
+      targetArray.push(updatedTask);
+
+      if (sourceColumnId !== targetColumnId) {
+        const targetCol = this.getColumnById(targetColumnId);
+        if (targetCol) {
+          (toastr as any).success(`Task moved to ${targetCol.title}`, 'Success');
         }
       }
-      this.clearDragState();
-      return;
+
+      this.saveToStorage();
+    } catch (error) {
+      console.error('Error moving task:', error);
+      (toastr as any).error('Failed to move task', 'Error');
     }
-
-    // Handle Task Drop into empty column area
-    if (!this.dragSource) return;
-
-    const { columnId: sourceColumnId, taskId: sourceTaskId } = this.dragSource;
-    const sourceArray = this.getColumnTasks(sourceColumnId);
-    const sourceIndex = sourceArray.findIndex((task) => task.id === sourceTaskId);
-    if (sourceIndex < 0) {
-      this.clearDragState();
-      return;
-    }
-
-    const [moved] = sourceArray.splice(sourceIndex, 1);
-    if (!moved) {
-      this.clearDragState();
-      return;
-    }
-
-    const targetArray = this.getColumnTasks(targetColumnId);
-    const updatedTask = this.updateTaskStatusForColumn({ ...moved }, targetColumnId);
-    targetArray.push(updatedTask);
-
-    this.saveToStorage();
     this.clearDragState();
   }
 
-  onDropOnTask(targetColumnId: string, targetTaskId: string, event: DragEvent): void {
+  async onDropOnTask(targetColumnId: string, targetTaskId: string, event: DragEvent): Promise<void> {
     event.preventDefault();
     event.stopPropagation();
     if (!this.dragSource) return;
 
-    const { columnId: sourceColumnId, taskId: sourceTaskId } = this.dragSource;
-    const placeAfterTarget = this.shouldPlaceAfterTarget(event);
+    try {
+      const { columnId: sourceColumnId, taskId: sourceTaskId } = this.dragSource;
+      const placeAfterTarget = this.shouldPlaceAfterTarget(event);
 
-    const sourceArray = this.getColumnTasks(sourceColumnId);
-    const targetArray = this.getColumnTasks(targetColumnId);
+      const sourceArray = this.getColumnTasks(sourceColumnId);
+      const targetArray = this.getColumnTasks(targetColumnId);
 
-    const sourceIndex = sourceArray.findIndex((task) => task.id === sourceTaskId);
-    const sourceTask = sourceArray[sourceIndex];
-    if (!sourceTask) {
-      this.clearDragState();
-      return;
-    }
-
-    const targetIndex = targetArray.findIndex((task) => task.id === targetTaskId);
-    if (targetIndex < 0) {
-      this.clearDragState();
-      return;
-    }
-
-    if (sourceColumnId === targetColumnId) {
-      const moved = this.moveTaskById(sourceArray, sourceTaskId, targetTaskId, placeAfterTarget);
-      if (moved) {
-        this.saveToStorage();
+      const sourceIndex = sourceArray.findIndex((task) => task.id === sourceTaskId);
+      const sourceTask = sourceArray[sourceIndex];
+      if (!sourceTask) {
+        this.clearDragState();
+        return;
       }
-      this.clearDragState();
-      return;
+
+      const targetIndex = targetArray.findIndex((task) => task.id === targetTaskId);
+      if (targetIndex < 0) {
+        this.clearDragState();
+        return;
+      }
+
+      if (sourceColumnId === targetColumnId) {
+        const moved = this.moveTaskById(sourceArray, sourceTaskId, targetTaskId, placeAfterTarget);
+        if (moved) {
+          this.saveToStorage();
+        }
+        this.clearDragState();
+        return;
+      }
+
+      sourceArray.splice(sourceIndex, 1);
+      const updatedTask = this.updateTaskStatusForColumn({ ...sourceTask }, targetColumnId);
+      const insertIndex = placeAfterTarget ? targetIndex + 1 : targetIndex;
+      targetArray.splice(insertIndex, 0, updatedTask);
+
+      const targetCol = this.getColumnById(targetColumnId);
+      if (targetCol) {
+        (toastr as any).success(`Task moved to ${targetCol.title}`, 'Success');
+      }
+
+      this.saveToStorage();
+    } catch (error) {
+      console.error('Error moving task:', error);
+      (toastr as any).error('Failed to move task', 'Error');
     }
-
-    sourceArray.splice(sourceIndex, 1);
-    const updatedTask = this.updateTaskStatusForColumn({ ...sourceTask }, targetColumnId);
-    const insertIndex = placeAfterTarget ? targetIndex + 1 : targetIndex;
-    targetArray.splice(insertIndex, 0, updatedTask);
-
-    this.saveToStorage();
     this.clearDragState();
   }
 

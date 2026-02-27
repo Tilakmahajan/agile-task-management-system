@@ -97,7 +97,7 @@
             }
           </div>
 
-          <!-- Add Column Input -->
+        <!-- Add Column Input -->
           <div class="nav-control-item inline-flex items-center gap-2 rounded-xl p-1 min-h-[40px] transition-colors focus-within:border-indigo-400 shrink-0 w-full sm:w-auto bg-white shadow-sm">
             <input
               id="new-column"
@@ -118,6 +118,35 @@
               </svg>
             </button>
           </div>
+
+          <!-- User Profile & Logout -->
+          @if (user$ | async; as user) {
+            <div class="relative nav-control-item inline-flex items-center gap-2 rounded-xl p-1 min-h-[40px] transition-colors shrink-0 bg-white shadow-sm cursor-pointer ml-1 sm:ml-2 group">
+              <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold overflow-hidden shadow-inner">
+                @if (user.photoURL) {
+                  <img [src]="user.photoURL" alt="User" class="w-full h-full object-cover"/>
+                } @else {
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                    <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd" />
+                  </svg>
+                }
+              </div>
+              
+              <!-- Logout Dropdown on Hover -->
+              <div class="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-neutral-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden text-sm">
+                <div class="px-4 py-3 border-b border-neutral-100 bg-neutral-50/50">
+                  <p class="truncate text-neutral-800 font-medium">{{ user.displayName || 'User' }}</p>
+                  <p class="truncate text-neutral-500 text-[11px] mt-0.5" [title]="user.email">{{ user.email }}</p>
+                </div>
+                <button type="button" (click)="logout()" class="w-full justify-start text-left px-4 py-2.5 text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors font-medium">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Sign out
+                </button>
+              </div>
+            </div>
+          }
         </div>
       </div>
 
