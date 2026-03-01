@@ -48,6 +48,17 @@
     background: #ffffff;
 }
 
+/* Error state styling */
+.border-red-500 {
+    border-color: #ef4444 !important;
+    background: #fef2f2 !important;
+}
+
+.focus-ring-red:focus {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+}
+
 .auth-btn {
     background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
     color: white;

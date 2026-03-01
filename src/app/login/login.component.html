@@ -14,7 +14,9 @@
           name="email"
           [(ngModel)]="email" 
           required
-          class="auth-input" 
+          class="auth-input"
+          [class.border-red-500]="emailError"
+          [class.focus-ring-red]="emailError"
           placeholder="you@example.com"
         />
         <p *ngIf="emailError" class="text-red-500 text-xs mt-1">{{ emailError }}</p>
@@ -28,7 +30,9 @@
           name="password"
           [(ngModel)]="password" 
           required
-          class="auth-input" 
+          class="auth-input"
+          [class.border-red-500]="passwordError"
+          [class.focus-ring-red]="passwordError"
           placeholder="••••••••"
         />
         <p *ngIf="passwordError" class="text-red-500 text-xs mt-1">{{ passwordError }}</p>

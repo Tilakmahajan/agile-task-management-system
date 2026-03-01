@@ -18,7 +18,13 @@ export class AuthService {
             this.router.navigate(['/board']);
         } catch (error) {
             console.error("Registration error:", error);
-            throw error;
+            // Re-throw with enhanced error info
+            const err = error as { code?: string; message?: string; name?: string };
+            throw {
+                code: err.code || 'unknown',
+                message: err.message || String(error),
+                name: err.name || 'Error'
+            };
         }
     }
 
@@ -28,7 +34,15 @@ export class AuthService {
             this.router.navigate(['/board']);
         } catch (error) {
             console.error("Login error:", error);
-            throw error;
+            // Re-throw with enhanced error info for better handling
+            const err = error as { code?: string; message?: string; name?: string };
+            const enhancedError = {
+                code: err.code || 'unknown',
+                message: err.message || String(error),
+                name: err.name || 'Error'
+            };
+            console.log("Enhanced Firebase Error:", enhancedError);
+            throw enhancedError;
         }
     }
 

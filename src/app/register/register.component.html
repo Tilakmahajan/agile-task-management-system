@@ -14,7 +14,8 @@
           name="fullName"
           [(ngModel)]="fullName" 
           required
-          class="auth-input" 
+          class="auth-input"
+          [class.border-red-500]="fullNameError"
           placeholder="John Doe"
         />
         <p *ngIf="fullNameError" class="text-red-500 text-xs mt-1">{{ fullNameError }}</p>
@@ -28,7 +29,8 @@
           name="email"
           [(ngModel)]="email" 
           required
-          class="auth-input" 
+          class="auth-input"
+          [class.border-red-500]="emailError"
           placeholder="you@example.com"
         />
         <p *ngIf="emailError" class="text-red-500 text-xs mt-1">{{ emailError }}</p>
@@ -42,7 +44,8 @@
           name="password"
           [(ngModel)]="password" 
           required
-          class="auth-input" 
+          class="auth-input"
+          [class.border-red-500]="passwordError"
           placeholder="••••••••"
         />
         <p *ngIf="passwordError" class="text-red-500 text-xs mt-1">{{ passwordError }}</p>
@@ -56,7 +59,8 @@
           name="confirmPassword"
           [(ngModel)]="confirmPassword" 
           required
-          class="auth-input" 
+          class="auth-input"
+          [class.border-red-500]="confirmPasswordError"
           placeholder="••••••••"
         />
         <p *ngIf="confirmPasswordError" class="text-red-500 text-xs mt-1">{{ confirmPasswordError }}</p>
