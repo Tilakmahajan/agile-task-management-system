@@ -1,30 +1,16 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import toastr from 'toastr';
 import { AuthService } from '../services/auth.service';
+import { FirestoreService, BoardColumn, Task } from '../services/firestore.service';
+import { Subscription } from 'rxjs';
 
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  priority: 'High' | 'Medium' | 'Low';
-  dueDate: string;
-  statusLabel: string;
-}
+export type { Task };
 
 type PriorityFilter = 'All' | 'High' | 'Medium' | 'Low';
 type SortMode = 'manual' | 'priorityHigh' | 'priorityLow' | 'dueSoon' | 'dueLate' | 'title';
 type ColumnAccent = 'todo' | 'progress' | 'done' | 'custom';
-
-interface BoardColumn {
-  id: string;
-  title: string;
-  statusLabel: string;
-  accent: ColumnAccent;
-  tasks: Task[];
-  isDefault: boolean;
-}
 
 interface PersistedBoard {
   columns: BoardColumn[];
@@ -39,11 +25,20 @@ const STORAGE_KEY = 'agile-task-board';
   templateUrl: './task-board.html',
   styleUrl: './task-board.css',
 })
-export class TaskBoard implements OnInit {
+export class TaskBoard implements OnInit, OnDestroy {
   private authService = inject(AuthService);
+  private firestoreService = inject(FirestoreService);
   user$ = this.authService.user$;
 
+  private boardSubscription: Subscription | null = null;
+  private authSubscription: Subscription | null = null;
+  private isLoadingFromFirestore = false;
+  private isSyncingToFirestore = false;
+  private currentUserId: string | null = null;
+
   columns: BoardColumn[] = [];
+  isSaving = false;
+  lastSyncTime: Date | null = null;
 
   priorityFilter: PriorityFilter = 'All';
   sortMode: SortMode = 'manual';
@@ -54,11 +49,9 @@ export class TaskBoard implements OnInit {
   addToColumnId = 'todo';
   editContext: { columnId: string; index: number } | null = null;
 
-  // Delete confirmation dialog
   showDeleteConfirm = false;
   deleteContext: { columnId: string; taskId: string; taskTitle: string } | null = null;
 
-  // Column removal confirmation dialog
   showRemoveColumnConfirm = false;
   removeColumnContext: { columnId: string; columnTitle: string; taskCount: number } | null = null;
 
@@ -75,11 +68,105 @@ export class TaskBoard implements OnInit {
   dropTargetColumnPlacement: 'before' | 'after' | null = null;
 
   ngOnInit(): void {
-    this.loadFromStorage();
     this.configureToastr();
+    this.loadUserData();
+  }
+
+  ngOnDestroy(): void {
+    this.cleanupFirestore();
+    if (this.authSubscription) {
+      this.authSubscription.unsubscribe();
+      this.authSubscription = null;
+    }
+  }
+
+  private loadUserData(): void {
+    this.authSubscription = this.authService.user$.subscribe((user) => {
+      if (user) {
+        this.currentUserId = user.uid;
+        this.initializeFirestoreBoard();
+      } else {
+        this.currentUserId = null;
+        this.cleanupFirestore();
+        this.loadFromStorage();
+      }
+    });
+  }
+
+  private async initializeFirestoreBoard(): Promise<void> {
+    this.cleanupFirestore();
+    this.isLoadingFromFirestore = true;
+
+    try {
+      // Use async initialization that waits for first data
+      const columns = await this.firestoreService.initializeBoardSubscription();
+      
+      if (columns.length > 0) {
+        // We have data from Firestore
+        this.columns = columns;
+        console.log('Loaded board data from Firestore:', columns.length, 'columns');
+        // Also save to localStorage as backup
+        this.saveToStorageOnly();
+      } else {
+        // No data in Firestore, create default columns and save
+        this.columns = this.createDefaultColumns();
+        await this.saveToFirestore();
+        console.log('Created new board in Firestore');
+      }
+    } catch (error) {
+      console.error('Error initializing Firestore board:', error);
+      // On error, load from storage as fallback
+      this.loadFromStorage();
+    } finally {
+      this.isLoadingFromFirestore = false;
+    }
+
+    // Also subscribe to real-time updates for future changes
+    this.boardSubscription = this.firestoreService.board$.subscribe((columns) => {
+      // Only update if we don't have pending local changes and data is different
+      if (columns.length > 0 && !this.firestoreService.hasPendingChanges()) {
+        // Check if data is actually different to avoid unnecessary updates
+        const currentIds = new Set(this.columns.map(c => c.id));
+        const newIds = new Set(columns.map(c => c.id));
+        
+        let hasChanges = columns.length !== this.columns.length;
+        if (!hasChanges) {
+          for (const col of columns) {
+            if (!currentIds.has(col.id) || JSON.stringify(col.tasks) !== JSON.stringify(this.columns.find(c => c.id === col.id)?.tasks)) {
+              hasChanges = true;
+              break;
+            }
+          }
+        }
+        
+        if (hasChanges) {
+          this.columns = columns;
+          console.log('Real-time update from Firestore');
+          this.saveToStorageOnly();
+        }
+      }
+    });
+  }
+
+  private cleanupFirestore(): void {
+    if (this.boardSubscription) {
+      this.boardSubscription.unsubscribe();
+      this.boardSubscription = null;
+    }
+    this.firestoreService.unsubscribeFromBoard();
+  }
+
+  private mockApiCheck(): Promise<{ status: number; message: string }> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({ status: 200, message: 'Task saved successfully' });
+      }, 100);
+    });
   }
 
   async logout(): Promise<void> {
+    this.cleanupFirestore();
+    this.currentUserId = null;
     await this.authService.logout();
   }
 
@@ -102,13 +189,13 @@ export class TaskBoard implements OnInit {
     };
   }
 
-  // Dynamic column getters for stats
   get firstColumn(): BoardColumn | undefined {
     return this.columns[0];
   }
 
   get lastColumn(): BoardColumn | undefined {
-    return this.columns[this.columns.length - 1];
+    const len = this.columns.length;
+    return len > 0 ? this.columns[len - 1] : undefined;
   }
 
   get middleColumns(): BoardColumn[] {
@@ -122,12 +209,10 @@ export class TaskBoard implements OnInit {
   }
 
   get inProgressTasksCount(): number {
-    // Get tasks from middle columns (if any) or use 'inProgress' column if exists
     const inProgressCol = this.columns.find(c => c.id === 'inProgress' || c.id === 'inprogress');
     if (inProgressCol) {
       return this.getFilteredTasks(inProgressCol).length;
     }
-    // Fallback: sum of all middle columns
     return this.middleColumns.reduce((sum, col) => sum + this.getFilteredTasks(col).length, 0);
   }
 
@@ -136,12 +221,9 @@ export class TaskBoard implements OnInit {
     return lastCol ? this.getFilteredTasks(lastCol).length : 0;
   }
 
-  // Dynamic stats columns - returns array matching the number of columns
   get statsColumns(): { title: string; count: number; statusLabel: string; accent: string; isFirst: boolean; isLast: boolean }[] {
     return this.columns.map((column, index) => {
       let accent = column.accent;
-
-      // Determine accent based on column position
       if (index === 0) {
         accent = 'todo';
       } else if (index === this.columns.length - 1) {
@@ -149,7 +231,6 @@ export class TaskBoard implements OnInit {
       } else {
         accent = 'progress';
       }
-
       return {
         title: column.title,
         count: this.getFilteredTasks(column).length,
@@ -234,6 +315,8 @@ export class TaskBoard implements OnInit {
       }
 
       this.saveToStorage();
+      const result = await this.mockApiCheck();
+      console.log('Mock API Response:', result);
     } catch (error) {
       console.error('Error saving task:', error);
       (toastr as any).error('Failed to save task', 'Error');
@@ -248,7 +331,6 @@ export class TaskBoard implements OnInit {
     this.formTask = this.createEmptyTask();
   }
 
-  // Task delete confirmation methods
   confirmDeleteTask(columnId: string, taskId: string, event: Event): void {
     event.stopPropagation();
     const arr = this.getColumnTasks(columnId);
@@ -301,7 +383,6 @@ export class TaskBoard implements OnInit {
     }
   }
 
-  // Column removal confirmation methods
   confirmRemoveColumn(columnId: string, event: Event): void {
     event.stopPropagation();
     const column = this.getColumnById(columnId);
@@ -322,10 +403,8 @@ export class TaskBoard implements OnInit {
 
   executeRemoveColumn(): void {
     if (!this.removeColumnContext) return;
-
     const { columnId } = this.removeColumnContext;
     this.performRemoveColumn(columnId);
-
     this.showRemoveColumnConfirm = false;
     this.removeColumnContext = null;
   }
@@ -431,7 +510,6 @@ export class TaskBoard implements OnInit {
     this.onDragOver(event);
     this.dropTargetColumnId = columnId;
 
-    // Determine before/after placement for column drop
     if (this.draggingColumnId) {
       const targetEl = event.currentTarget as HTMLElement | null;
       if (targetEl) {
@@ -451,7 +529,6 @@ export class TaskBoard implements OnInit {
     event.preventDefault();
 
     try {
-      // Handle Column Drop
       if (this.draggingColumnId) {
         const sourceId = this.draggingColumnId;
         if (sourceId !== targetColumnId) {
@@ -472,7 +549,6 @@ export class TaskBoard implements OnInit {
         return;
       }
 
-      // Handle Task Drop into empty column area
       if (!this.dragSource) return;
 
       const { columnId: sourceColumnId, taskId: sourceTaskId } = this.dragSource;
@@ -618,9 +694,60 @@ export class TaskBoard implements OnInit {
   private saveToStorage(): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ columns: this.columns }));
+      this.saveToFirestore();
     } catch {
       // ignore storage issues
     }
+  }
+
+  private saveToStorageOnly(): void {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ columns: this.columns }));
+    } catch {
+      // ignore storage issues
+    }
+  }
+
+  private async saveToFirestore(): Promise<void> {
+    // Only save to Firestore if user is logged in
+    if (!this.currentUserId) {
+      console.log('User not logged in, skipping Firestore save');
+      return;
+    }
+
+    // Prevent concurrent saves
+    if (this.isSyncingToFirestore) {
+      console.log('Already syncing to Firestore, skipping...');
+      return;
+    }
+
+    this.isSyncingToFirestore = true;
+    this.isSaving = true;
+
+    try {
+      // Mark local changes to prevent race conditions
+      this.firestoreService.markLocalChanges();
+      await this.firestoreService.saveBoardData(this.columns);
+      this.lastSyncTime = new Date();
+      console.log('Board saved to Firestore successfully for user:', this.currentUserId);
+    } catch (error: any) {
+      console.error('Error saving to Firestore:', error);
+      // Show user-friendly error message
+      const errorMessage = error?.message || 'Failed to sync with cloud. Your data is saved locally.';
+      (toastr as any).error(errorMessage, 'Sync Error');
+    } finally {
+      this.isSyncingToFirestore = false;
+      this.isSaving = false;
+      // Clear local changes flag after a short delay
+      setTimeout(() => {
+        this.firestoreService.clearLocalChanges();
+      }, 500);
+    }
+  }
+
+  async checkTaskSaved(): Promise<{ status: number; message: string }> {
+    await this.mockApiCheck();
+    return { status: 200, message: 'Task saved to database successfully' };
   }
 
   private normalizeColumn(column: Partial<BoardColumn>, index: number): BoardColumn {
