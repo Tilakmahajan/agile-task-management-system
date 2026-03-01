@@ -17,6 +17,7 @@
           class="auth-input" 
           placeholder="John Doe"
         />
+        <p *ngIf="fullNameError" class="text-red-500 text-xs mt-1">{{ fullNameError }}</p>
       </div>
 
       <div>
@@ -30,6 +31,7 @@
           class="auth-input" 
           placeholder="you@example.com"
         />
+        <p *ngIf="emailError" class="text-red-500 text-xs mt-1">{{ emailError }}</p>
       </div>
 
       <div>
@@ -43,6 +45,7 @@
           class="auth-input" 
           placeholder="••••••••"
         />
+        <p *ngIf="passwordError" class="text-red-500 text-xs mt-1">{{ passwordError }}</p>
       </div>
 
       <div>
@@ -56,11 +59,17 @@
           class="auth-input" 
           placeholder="••••••••"
         />
+        <p *ngIf="confirmPasswordError" class="text-red-500 text-xs mt-1">{{ confirmPasswordError }}</p>
+      </div>
+
+      <div *ngIf="errorMsg" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+        {{ errorMsg }}
       </div>
 
       <div>
-        <button type="submit" class="auth-btn w-full mt-2">
-          Create Account
+        <button type="submit" class="auth-btn w-full mt-2" [disabled]="isLoading">
+          <span *ngIf="!isLoading">Create Account</span>
+          <span *ngIf="isLoading">Creating Account...</span>
         </button>
       </div>
     </form>
