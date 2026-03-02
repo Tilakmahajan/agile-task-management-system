@@ -21,8 +21,33 @@ export class LoginComponent {
 
     private authService = inject(AuthService);
     private cdr = inject(ChangeDetectorRef);
+    private loadingTimer: ReturnType<typeof setTimeout> | null = null;
     private emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     private minPasswordLength = 6;
+
+    private showLoadingWithDelay(): void {
+        this.clearLoadingTimer();
+        this.isLoading = false;
+        this.loadingTimer = setTimeout(() => {
+            this.isLoading = true;
+            this.cdr.detectChanges();
+            this.loadingTimer = null;
+        }, 350);
+    }
+
+    private clearLoadingTimer(): void {
+        if (!this.loadingTimer) return;
+        clearTimeout(this.loadingTimer);
+        this.loadingTimer = null;
+    }
+
+    private hideLoading(): void {
+        this.clearLoadingTimer();
+        if (this.isLoading) {
+            this.isLoading = false;
+            this.cdr.detectChanges();
+        }
+    }
 
     private validateForm(): boolean {
         this.emailError = '';
@@ -133,18 +158,16 @@ export class LoginComponent {
         this.passwordError = '';
         this.errorMsg = '';
         
-        this.isLoading = true;
-        this.cdr.detectChanges();
+        this.showLoadingWithDelay();
         
         try {
             await this.authService.login(this.email.trim(), this.password);
         } catch (err: any) {
+            this.hideLoading();
             console.log('Caught error in onSubmit:', err);
             this.handleAuthError(err);
         } finally {
-            // This ensures isLoading is always set to false
-            this.isLoading = false;
-            this.cdr.detectChanges();
+            this.hideLoading();
         }
     }
 }

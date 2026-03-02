@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, user } from '@angular/fire/auth';
 import { Router } from '@angular/router';
+import toastr from 'toastr';
 
 @Injectable({
     providedIn: 'root'
@@ -31,6 +32,7 @@ export class AuthService {
     async login(email: string, password: string): Promise<void> {
         try {
             await signInWithEmailAndPassword(this.auth, email, password);
+            (toastr as any).success('Login successful!', 'Success');
             this.router.navigate(['/board']);
         } catch (error) {
             console.error("Login error:", error);
@@ -49,6 +51,7 @@ export class AuthService {
     async logout(): Promise<void> {
         try {
             await signOut(this.auth);
+            (toastr as any).success('Logged out successfully!', 'Success');
             this.router.navigate(['/login']);
         } catch (error) {
             console.error("Logout error:", error);

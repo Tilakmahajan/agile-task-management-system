@@ -72,4 +72,11 @@
       </a>
     </div>
   </div>
+
+  <div *ngIf="isLoading" class="auth-loading-overlay">
+    <div class="auth-loading-card">
+      <div class="auth-loading-spinner" aria-hidden="true"></div>
+      <p class="auth-loading-text">Signing you in...</p>
+    </div>
+  </div>
 </div>

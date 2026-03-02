@@ -138,11 +138,11 @@
                   <p class="truncate text-neutral-800 font-medium">{{ user.displayName || 'User' }}</p>
                   <p class="truncate text-neutral-500 text-[11px] mt-0.5" [title]="user.email">{{ user.email }}</p>
                 </div>
-                <button type="button" (click)="logout()" class="w-full justify-start text-left px-4 py-2.5 text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors font-medium">
+                <button type="button" (click)="logout()" [disabled]="isLoggingOut" class="w-full justify-start text-left px-4 py-2.5 text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors font-medium disabled:opacity-60 disabled:cursor-not-allowed">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
-                  Sign out
+                  {{ isLoggingOut ? 'Signing out...' : 'Sign out' }}
                 </button>
               </div>
             </div>
@@ -301,7 +301,7 @@
         <h3 class="text-base sm:text-lg font-semibold text-neutral-900">
           {{ isEditMode ? 'Edit task' : 'New task' }}
         </h3>
-        <form (ngSubmit)="saveTask()" class="mt-4 space-y-3">
+        <form class="mt-4 space-y-3" (ngSubmit)="saveTask()">
           <div>
             <label for="task-title" class="block text-xs font-medium text-neutral-600">Title</label>
             <input
@@ -436,6 +436,15 @@
             Yes, Remove
           </button>
         </div>
+      </div>
+    </div>
+  }
+
+  @if (isLoggingOut) {
+    <div class="auth-loading-overlay">
+      <div class="auth-loading-card">
+        <div class="auth-loading-spinner" aria-hidden="true"></div>
+        <p class="auth-loading-text">Signing you out...</p>
       </div>
     </div>
   }

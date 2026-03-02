@@ -35,9 +35,11 @@ export class TaskBoard implements OnInit, OnDestroy {
   private isLoadingFromFirestore = false;
   private isSyncingToFirestore = false;
   private currentUserId: string | null = null;
+  private boardInitToken = 0;
 
   columns: BoardColumn[] = [];
   isSaving = false;
+  isLoggingOut = false;
   lastSyncTime: Date | null = null;
 
   priorityFilter: PriorityFilter = 'All';
@@ -82,6 +84,16 @@ export class TaskBoard implements OnInit, OnDestroy {
 
   private loadUserData(): void {
     this.authSubscription = this.authService.user$.subscribe((user) => {
+      const nextUserId = user?.uid ?? null;
+      const userChanged = this.currentUserId !== nextUserId;
+
+      if (userChanged) {
+        // Invalidate any in-flight async loads from previous sessions.
+        this.boardInitToken += 1;
+        // Clear stale board immediately to avoid showing a previous user's tasks.
+        this.columns = this.createDefaultColumns();
+      }
+
       if (user) {
         this.currentUserId = user.uid;
         this.initializeFirestoreBoard();
@@ -94,35 +106,63 @@ export class TaskBoard implements OnInit, OnDestroy {
   }
 
   private async initializeFirestoreBoard(): Promise<void> {
+    const initToken = this.boardInitToken;
     this.cleanupFirestore();
     this.isLoadingFromFirestore = true;
 
     try {
-      // Use async initialization that waits for first data
+      // First, try to load from localStorage as immediate fallback
+      const raw = localStorage.getItem(this.getStorageKey());
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed.columns && Array.isArray(parsed.columns) && parsed.columns.length > 0) {
+            this.columns = parsed.columns;
+            console.log('Loaded board data from localStorage:', this.columns.length, 'columns');
+          }
+        } catch (e) {
+          console.error('Error parsing localStorage data:', e);
+        }
+      }
+
+      // Use async initialization that waits for first data from Firestore
       const columns = await this.firestoreService.initializeBoardSubscription();
+
+      // Ignore results from stale auth sessions.
+      if (initToken !== this.boardInitToken) {
+        return;
+      }
       
       if (columns.length > 0) {
-        // We have data from Firestore
+        // We have data from Firestore - use it
         this.columns = columns;
         console.log('Loaded board data from Firestore:', columns.length, 'columns');
         // Also save to localStorage as backup
         this.saveToStorageOnly();
-      } else {
-        // No data in Firestore, create default columns and save
+      } else if (this.columns.length === 0) {
+        // No data in Firestore and no valid localStorage data, create default columns and save
         this.columns = this.createDefaultColumns();
         await this.saveToFirestore();
         console.log('Created new board in Firestore');
       }
+      
+      // Force Angular to detect the change
+      this.columns = [...this.columns];
     } catch (error) {
       console.error('Error initializing Firestore board:', error);
       // On error, load from storage as fallback
-      this.loadFromStorage();
+      if (this.columns.length === 0) {
+        this.loadFromStorage();
+      }
     } finally {
       this.isLoadingFromFirestore = false;
     }
 
     // Also subscribe to real-time updates for future changes
     this.boardSubscription = this.firestoreService.board$.subscribe((columns) => {
+      if (initToken !== this.boardInitToken) {
+        return;
+      }
       // Only update if we don't have pending local changes and data is different
       if (columns.length > 0 && !this.firestoreService.hasPendingChanges()) {
         // Check if data is actually different to avoid unnecessary updates
@@ -165,9 +205,20 @@ export class TaskBoard implements OnInit, OnDestroy {
   }
 
   async logout(): Promise<void> {
+    if (this.isLoggingOut) return;
+
+    this.isLoggingOut = true;
     this.cleanupFirestore();
     this.currentUserId = null;
-    await this.authService.logout();
+
+    try {
+      await this.authService.logout();
+    } catch (error) {
+      console.error('Error during logout:', error);
+      (toastr as any).error('Failed to logout. Please try again.', 'Error');
+    } finally {
+      this.isLoggingOut = false;
+    }
   }
 
   private configureToastr(): void {
@@ -287,7 +338,10 @@ export class TaskBoard implements OnInit, OnDestroy {
 
   async saveTask(): Promise<void> {
     const t = this.formTask;
-    if (!t.title?.trim()) return;
+    if (!t.title?.trim()) {
+      this.cancelForm();
+      return;
+    }
 
     try {
       if (this.isEditMode && this.editContext) {
@@ -296,7 +350,10 @@ export class TaskBoard implements OnInit, OnDestroy {
         (toastr as any).success('Task updated successfully!', 'Success');
       } else {
         const targetColumn = this.getColumnById(this.addToColumnId);
-        if (!targetColumn) return;
+        if (!targetColumn) {
+          this.cancelForm();
+          return;
+        }
 
         const newTask: Task = {
           ...this.createEmptyTask(),
@@ -315,13 +372,13 @@ export class TaskBoard implements OnInit, OnDestroy {
       }
 
       this.saveToStorage();
+      this.cancelForm();
       const result = await this.mockApiCheck();
       console.log('Mock API Response:', result);
     } catch (error) {
       console.error('Error saving task:', error);
       (toastr as any).error('Failed to save task', 'Error');
     }
-    this.cancelForm();
   }
 
   cancelForm(): void {
@@ -665,7 +722,7 @@ export class TaskBoard implements OnInit, OnDestroy {
     const defaults = this.createDefaultColumns();
 
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(this.getStorageKey());
       if (!raw) {
         this.columns = defaults;
         this.saveToStorage();
@@ -693,7 +750,7 @@ export class TaskBoard implements OnInit, OnDestroy {
 
   private saveToStorage(): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ columns: this.columns }));
+      localStorage.setItem(this.getStorageKey(), JSON.stringify({ columns: this.columns }));
       this.saveToFirestore();
     } catch {
       // ignore storage issues
@@ -702,10 +759,14 @@ export class TaskBoard implements OnInit, OnDestroy {
 
   private saveToStorageOnly(): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ columns: this.columns }));
+      localStorage.setItem(this.getStorageKey(), JSON.stringify({ columns: this.columns }));
     } catch {
       // ignore storage issues
     }
+  }
+
+  private getStorageKey(): string {
+    return this.currentUserId ? `${STORAGE_KEY}:${this.currentUserId}` : `${STORAGE_KEY}:guest`;
   }
 
   private async saveToFirestore(): Promise<void> {
