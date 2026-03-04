@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import toastr from 'toastr';
 import { AuthService } from '../services/auth.service';
 import { FirestoreService, BoardColumn, Task } from '../services/firestore.service';
@@ -21,7 +22,7 @@ const STORAGE_KEY = 'agile-task-board';
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './task-board.html',
   styleUrl: './task-board.css',
 })
@@ -118,7 +119,6 @@ export class TaskBoard implements OnInit, OnDestroy {
           const parsed = JSON.parse(raw);
           if (parsed.columns && Array.isArray(parsed.columns) && parsed.columns.length > 0) {
             this.columns = parsed.columns;
-            console.log('Loaded board data from localStorage:', this.columns.length, 'columns');
           }
         } catch (e) {
           console.error('Error parsing localStorage data:', e);
@@ -132,20 +132,20 @@ export class TaskBoard implements OnInit, OnDestroy {
       if (initToken !== this.boardInitToken) {
         return;
       }
-      
+
       if (columns.length > 0) {
         // We have data from Firestore - use it
         this.columns = columns;
-        console.log('Loaded board data from Firestore:', columns.length, 'columns');
+        // Firestore data loaded
         // Also save to localStorage as backup
         this.saveToStorageOnly();
       } else if (this.columns.length === 0) {
         // No data in Firestore and no valid localStorage data, create default columns and save
         this.columns = this.createDefaultColumns();
         await this.saveToFirestore();
-        console.log('Created new board in Firestore');
+        // Created new board
       }
-      
+
       // Force Angular to detect the change
       this.columns = [...this.columns];
     } catch (error) {
@@ -168,7 +168,7 @@ export class TaskBoard implements OnInit, OnDestroy {
         // Check if data is actually different to avoid unnecessary updates
         const currentIds = new Set(this.columns.map(c => c.id));
         const newIds = new Set(columns.map(c => c.id));
-        
+
         let hasChanges = columns.length !== this.columns.length;
         if (!hasChanges) {
           for (const col of columns) {
@@ -178,10 +178,10 @@ export class TaskBoard implements OnInit, OnDestroy {
             }
           }
         }
-        
+
         if (hasChanges) {
           this.columns = columns;
-          console.log('Real-time update from Firestore');
+          // Real-time update
           this.saveToStorageOnly();
         }
       }
@@ -196,10 +196,56 @@ export class TaskBoard implements OnInit, OnDestroy {
     this.firestoreService.unsubscribeFromBoard();
   }
 
-  private mockApiCheck(): Promise<{ status: number; message: string }> {
+  private mockApiCheck(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', payload?: { task?: Task; columnId?: string }): Promise<{ status: number; message: string; method: string; data?: any }> {
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve({ status: 200, message: 'Task saved successfully' });
+        let responseData: any = {};
+        let message = 'Success';
+        let status = 200;
+
+        if (payload?.task) {
+          responseData.task = payload.task;
+        }
+
+        if (payload?.columnId) {
+          const column = this.getColumnById(payload.columnId);
+          if (column) {
+            responseData.column = {
+              id: column.id,
+              title: column.title,
+              statusLabel: column.statusLabel,
+              accent: column.accent,
+              isDefault: column.isDefault
+            };
+          }
+        }
+
+        switch (method) {
+          case 'GET':
+            message = 'Data retrieved successfully';
+            break;
+          case 'POST':
+            message = 'Resource created successfully';
+            status = 201; // Created
+            break;
+          case 'PUT':
+            message = 'Resource replaced successfully';
+            break;
+          case 'PATCH':
+            message = 'Resource updated successfully';
+            break;
+          case 'DELETE':
+            message = 'Resource deleted successfully';
+            // convention for DELETE is often no body, but returning the deleted item is okay in mock
+            break;
+        }
+
+        resolve({
+          status,
+          message,
+          method,
+          data: Object.keys(responseData).length > 0 ? responseData : undefined
+        });
       }, 100);
     });
   }
@@ -348,6 +394,10 @@ export class TaskBoard implements OnInit, OnDestroy {
         const arr = this.getColumnTasks(this.editContext.columnId);
         arr[this.editContext.index] = { ...t, title: t.title.trim(), description: t.description?.trim() ?? '' };
         (toastr as any).success('Task updated successfully!', 'Success');
+
+        // Pass the updated task and column ID to mockApiCheck with PUT action
+        const result = await this.mockApiCheck('PUT', { task: arr[this.editContext.index], columnId: this.editContext.columnId });
+        console.log('Task saved (PUT):', JSON.stringify(result, null, 2));
       } else {
         const targetColumn = this.getColumnById(this.addToColumnId);
         if (!targetColumn) {
@@ -365,6 +415,10 @@ export class TaskBoard implements OnInit, OnDestroy {
         };
         targetColumn.tasks.push(newTask);
         (toastr as any).success('Task added successfully!', 'Success');
+
+        // Pass the new task and column ID to mockApiCheck with POST action
+        const result = await this.mockApiCheck('POST', { task: newTask, columnId: this.addToColumnId });
+        console.log('Task saved (POST):', JSON.stringify(result, null, 2));
       }
 
       if (this.priorityFilter !== 'All' && t.priority !== this.priorityFilter) {
@@ -373,8 +427,6 @@ export class TaskBoard implements OnInit, OnDestroy {
 
       this.saveToStorage();
       this.cancelForm();
-      const result = await this.mockApiCheck();
-      console.log('Mock API Response:', result);
     } catch (error) {
       console.error('Error saving task:', error);
       (toastr as any).error('Failed to save task', 'Error');
@@ -406,23 +458,31 @@ export class TaskBoard implements OnInit, OnDestroy {
   async executeDelete(): Promise<void> {
     if (!this.deleteContext) return;
 
+    const { columnId, taskId, taskTitle } = this.deleteContext;
+
+    // Close the popup immediately before starting the async operation
+    this.showDeleteConfirm = false;
+    this.deleteContext = null;
+
     try {
-      const { columnId, taskId } = this.deleteContext;
       const arr = this.getColumnTasks(columnId);
       const index = arr.findIndex((task) => task.id === taskId);
 
       if (index >= 0) {
+        const deletedTask = arr[index];
         arr.splice(index, 1);
         this.saveToStorage();
+
+        // Log delete action with task info and column ID
+        const result = await this.mockApiCheck('DELETE', { task: deletedTask, columnId });
+        console.log('Task deleted (DELETE):', JSON.stringify(result, null, 2));
+
         (toastr as any).warning('Task has been deleted!', 'Alert');
       }
     } catch (error) {
       console.error('Error deleting task:', error);
       (toastr as any).error('Failed to delete task', 'Error');
     }
-
-    this.showDeleteConfirm = false;
-    this.deleteContext = null;
   }
 
   async deleteTaskById(columnId: string, taskId: string): Promise<void> {
@@ -633,6 +693,10 @@ export class TaskBoard implements OnInit, OnDestroy {
         }
       }
 
+      // Simulate a PATCH request for moving a task
+      const result = await this.mockApiCheck('PATCH', { task: updatedTask, columnId: targetColumnId });
+      console.log('Task moved (PATCH):', JSON.stringify(result, null, 2));
+
       this.saveToStorage();
     } catch (error) {
       console.error('Error moving task:', error);
@@ -681,9 +745,13 @@ export class TaskBoard implements OnInit, OnDestroy {
       targetArray.splice(insertIndex, 0, updatedTask);
 
       const targetCol = this.getColumnById(targetColumnId);
-      if (targetCol) {
+      if (targetCol && sourceColumnId !== targetColumnId) {
         (toastr as any).success(`Task moved to ${targetCol.title}`, 'Success');
       }
+
+      // Simulate a PATCH request for moving a task
+      const result = await this.mockApiCheck('PATCH', { task: updatedTask, columnId: targetColumnId });
+      console.log('Task moved (PATCH):', JSON.stringify(result, null, 2));
 
       this.saveToStorage();
     } catch (error) {
@@ -790,7 +858,7 @@ export class TaskBoard implements OnInit, OnDestroy {
       this.firestoreService.markLocalChanges();
       await this.firestoreService.saveBoardData(this.columns);
       this.lastSyncTime = new Date();
-      console.log('Board saved to Firestore successfully for user:', this.currentUserId);
+      // Board saved
     } catch (error: any) {
       console.error('Error saving to Firestore:', error);
       // Show user-friendly error message
@@ -806,9 +874,9 @@ export class TaskBoard implements OnInit, OnDestroy {
     }
   }
 
-  async checkTaskSaved(): Promise<{ status: number; message: string }> {
-    await this.mockApiCheck();
-    return { status: 200, message: 'Task saved to database successfully' };
+  async checkTaskSaved(): Promise<{ status: number; message: string; task?: Task }> {
+    const result = await this.mockApiCheck('GET');
+    return { status: 200, message: 'Task saved to database successfully', task: result.data?.task };
   }
 
   private normalizeColumn(column: Partial<BoardColumn>, index: number): BoardColumn {
