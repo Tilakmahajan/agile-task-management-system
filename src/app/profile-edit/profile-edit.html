@@ -1,0 +1,74 @@
+<div class="auth-bg flex items-center justify-center relative">
+   
+  <!-- Back Button (Floating top left) -->
+  <div class="absolute top-6 left-6 z-20">
+    <a routerLink="/board" class="text-gray-600 hover:text-indigo-600 transition-colors p-2 rounded-full hover:bg-white/50 group flex items-center justify-center" aria-label="Back to Board">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+    </a>
+  </div>
+
+  <div class="auth-card">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">Edit Profile</h1>
+      <p class="text-gray-500">Update your account details</p>
+    </div>
+
+    <form [formGroup]="profileForm" (ngSubmit)="onSubmit()" class="space-y-5">
+      
+      <div>
+        <label for="displayName" class="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+        <input 
+          type="text" 
+          id="displayName" 
+          formControlName="displayName"
+          class="auth-input"
+          placeholder="Your name"
+        />
+      </div>
+
+      <div>
+        <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-1">
+          New Password <span class="text-xs text-gray-400 font-normal ml-1">(Leave blank to keep current)</span>
+        </label>
+        <input 
+          type="password" 
+          id="newPassword" 
+          formControlName="newPassword"
+          class="auth-input"
+          placeholder="••••••••"
+        />
+      </div>
+
+      <div [class.opacity-50]="!profileForm.get('newPassword')?.value" [class.pointer-events-none]="!profileForm.get('newPassword')?.value">
+        <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+        <input 
+          type="password" 
+          id="confirmPassword" 
+          formControlName="confirmPassword"
+          class="auth-input"
+          [class.border-red-500]="profileForm.errors?.['passwordMismatch'] && profileForm.get('confirmPassword')?.touched"
+          [class.focus-ring-red]="profileForm.errors?.['passwordMismatch'] && profileForm.get('confirmPassword')?.touched"
+          placeholder="••••••••"
+        />
+        <p *ngIf="profileForm.errors?.['passwordMismatch'] && profileForm.get('confirmPassword')?.touched" class="text-red-500 text-xs mt-1">
+          Passwords do not match
+        </p>
+      </div>
+
+      <div class="pt-2">
+        <button type="submit" class="auth-btn w-full gap-2" [disabled]="isLoading || (profileForm.pristine || profileForm.invalid)">
+          <span *ngIf="!isLoading">Save Changes</span>
+          <span *ngIf="isLoading" class="flex items-center justify-center gap-2">
+            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Saving...
+          </span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

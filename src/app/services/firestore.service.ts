@@ -29,15 +29,18 @@ export class FirestoreService {
   private auth = inject(Auth);
   private boardSubject = new BehaviorSubject<BoardColumn[]>([]);
   public board$ = this.boardSubject.asObservable();
-  
+
   // Subject for tracking local changes to avoid overwriting with stale data
   private localChangesSubject = new Subject<boolean>();
   public localChanges$ = this.localChangesSubject.asObservable();
-  
+
   private unsubscribe: (() => void) | null = null;
   private currentUserId: string | null = null;
   private isInitialized = false;
   private pendingSave = false;
+
+  // Track known columns to avoid fetching them before every save
+  private knownColumnIds = new Set<string>();
 
   /**
    * Initialize board data subscription for the current user
@@ -46,7 +49,7 @@ export class FirestoreService {
    */
   async initializeBoardSubscription(): Promise<BoardColumn[]> {
     const userId = this.auth.currentUser?.uid;
-    
+
     // If already subscribed to same user, don't resubscribe
     if (this.currentUserId === userId && this.unsubscribe && this.isInitialized) {
       return this.boardSubject.value;
@@ -66,11 +69,11 @@ export class FirestoreService {
 
     this.currentUserId = userId;
     this.isInitialized = false;
-    
+
     // Use ordered query for consistent results
     const boardCollection = collection(this.firestore, `users/${userId}/board`);
     const boardQuery = query(boardCollection, orderBy('order', 'asc'));
-    
+
     // Create a promise that will resolve when we get the first snapshot
     return new Promise((resolve) => {
       // Set a timeout to resolve even if no data (after 2 seconds)
@@ -88,7 +91,11 @@ export class FirestoreService {
           clearTimeout(timeoutId);
 
           const columns: BoardColumn[] = [];
+
+          this.knownColumnIds.clear();
+
           snapshot.forEach((docSnap) => {
+            this.knownColumnIds.add(docSnap.id);
             const data = docSnap.data() as Partial<BoardColumn> & { order?: number };
             columns.push({
               id: docSnap.id,
@@ -99,11 +106,11 @@ export class FirestoreService {
               isDefault: data.isDefault || false
             });
           });
-          
-          console.log('Firestore real-time update received:', columns.length, 'columns');
+
+          // Firestore update received
           this.boardSubject.next(columns);
           this.isInitialized = true;
-          
+
           // Resolve the promise with the columns
           resolve(columns);
         },
@@ -174,14 +181,10 @@ export class FirestoreService {
       const batch = writeBatch(this.firestore);
       const boardPath = `users/${userId}/board`;
 
-      // First, get all existing column IDs to determine what to delete
-      const boardCollection = collection(this.firestore, boardPath);
-      const snapshot = await getDocs(boardCollection);
-      const existingIds = new Set(snapshot.docs.map(d => d.id));
       const newIds = new Set(columns.map(c => c.id));
 
-      // Delete columns that exist in Firestore but not in the new data
-      existingIds.forEach(id => {
+      // Delete columns that track as "known" but were removed
+      this.knownColumnIds.forEach(id => {
         if (!newIds.has(id)) {
           const columnRef = doc(this.firestore, boardPath, id);
           batch.delete(columnRef);
@@ -204,7 +207,10 @@ export class FirestoreService {
       });
 
       await batch.commit();
-      console.log('Board saved to Firestore successfully');
+
+      // Update our known columns state after successful commit
+      this.knownColumnIds = newIds;
+      // Board saved
     } catch (error: any) {
       console.error('Error saving to Firestore:', error);
       throw new Error(this.getFriendlyErrorMessage(error));
@@ -280,9 +286,9 @@ export class FirestoreService {
    */
   private getFriendlyErrorMessage(error: any): string {
     if (!error) return 'An unknown error occurred.';
-    
+
     const errorCode = error.code || error.message || '';
-    
+
     if (errorCode.includes('permission-denied') || errorCode.includes('PERMISSION_DENIED')) {
       return 'Permission denied. Please check your account permissions.';
     }
@@ -298,12 +304,12 @@ export class FirestoreService {
     if (errorCode.includes('unavailable')) {
       return 'Service temporarily unavailable. Please try again later.';
     }
-    
+
     // Return original message if it's user-friendly
     if (typeof error.message === 'string' && error.message.length < 100) {
       return error.message;
     }
-    
+
     return 'An error occurred while saving your data. Please try again.';
   }
 }

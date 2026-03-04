@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, user } from '@angular/fire/auth';
+import { Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, user, updateProfile, updatePassword } from '@angular/fire/auth';
 import { Router } from '@angular/router';
 import toastr from 'toastr';
 
@@ -45,6 +45,38 @@ export class AuthService {
             };
             console.log("Enhanced Firebase Error:", enhancedError);
             throw enhancedError;
+        }
+    }
+
+    async updateProfileData(displayName: string): Promise<void> {
+        const currentUser = this.auth.currentUser;
+        if (!currentUser) throw new Error('User not logged in');
+
+        try {
+            await updateProfile(currentUser, { displayName });
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            throw error;
+        }
+    }
+
+    async updateUserPassword(newPassword: string): Promise<void> {
+        const currentUser = this.auth.currentUser;
+        if (!currentUser) throw new Error('User not logged in');
+
+        try {
+            await updatePassword(currentUser, newPassword);
+            (toastr as any).success('Password updated successfully', 'Success');
+        } catch (error) {
+            console.error('Error updating password:', error);
+            // Firebase reauthentication might be required
+            const err = error as any;
+            if (err.code === 'auth/requires-recent-login') {
+                (toastr as any).error('Please log out and log back in to change your password for security reasons.', 'Action Required');
+            } else {
+                (toastr as any).error(err.message || 'Failed to update password', 'Error');
+            }
+            throw error;
         }
     }
 
