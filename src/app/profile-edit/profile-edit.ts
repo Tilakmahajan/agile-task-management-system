@@ -21,6 +21,9 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
   profileForm!: FormGroup;
   isLoading = false;
   userEmail = '';
+  showCurrentPassword = false;
+  showNewPassword = false;
+  showConfirmPassword = false;
   private authSubscription: Subscription | null = null;
   private currentDisplayName = '';
 

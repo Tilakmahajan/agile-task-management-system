@@ -18,6 +18,8 @@ export class RegisterComponent {
     confirmPassword = '';
     errorMsg = '';
     isLoading = false;
+    showPassword = false;
+    showConfirmPassword = false;
 
     // Validation error messages
     fullNameError = '';

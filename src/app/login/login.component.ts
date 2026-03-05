@@ -18,6 +18,7 @@ export class LoginComponent {
     isLoading = false;
     emailError = '';
     passwordError = '';
+    showPassword = false;
 
     // Forgot password modal state
     showForgotModal = false;
