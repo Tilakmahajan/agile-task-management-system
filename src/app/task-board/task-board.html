@@ -1,4 +1,11 @@
 <div class="task-board-bg">
+  <!-- Slim Firestore syncing bar — unobtrusive, board content stays visible -->
+  @if (isLoadingFromFirestore) {
+    <div class="fixed top-0 left-0 right-0 z-50 h-1 bg-indigo-100 overflow-hidden">
+      <div class="h-full bg-indigo-500 animate-pulse w-full" style="animation: boardSync 1.5s ease-in-out infinite;">
+      </div>
+    </div>
+  }
   <div class="task-board-content min-h-screen px-3 py-6 sm:px-4 sm:py-8 text-neutral-800">
     <div class="max-w-6xl mx-auto space-y-6 sm:space-y-8">
       <div class="glass-header flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-4 sm:p-5 mb-4 rounded-3xl">

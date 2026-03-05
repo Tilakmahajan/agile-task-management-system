@@ -28,6 +28,36 @@
         />
       </div>
 
+      <!-- Read-only email display -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+        <div class="auth-input bg-gray-50 text-gray-500 cursor-not-allowed flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+          </svg>
+          <span class="truncate text-sm">{{ userEmail || 'Loading...' }}</span>
+        </div>
+        <p class="text-gray-400 text-xs mt-1">Email cannot be changed here.</p>
+      </div>
+
+      <div>
+        <label for="currentPassword" class="block text-sm font-medium text-gray-700 mb-1">
+          Current Password <span class="text-xs text-gray-400 font-normal ml-1">(Required to change password)</span>
+        </label>
+        <input 
+          type="password" 
+          id="currentPassword" 
+          formControlName="currentPassword"
+          class="auth-input"
+          [class.border-red-500]="profileForm.errors?.['currentPasswordRequired'] && (profileForm.get('currentPassword')?.touched || profileForm.get('newPassword')?.touched)"
+          [class.focus-ring-red]="profileForm.errors?.['currentPasswordRequired'] && (profileForm.get('currentPassword')?.touched || profileForm.get('newPassword')?.touched)"
+          placeholder="••••••••"
+        />
+        <p *ngIf="profileForm.errors?.['currentPasswordRequired'] && (profileForm.get('currentPassword')?.touched || profileForm.get('newPassword')?.touched)" class="text-red-500 text-xs mt-1">
+          Please enter your current password to set a new one
+        </p>
+      </div>
+
       <div>
         <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-1">
           New Password <span class="text-xs text-gray-400 font-normal ml-1">(Leave blank to keep current)</span>

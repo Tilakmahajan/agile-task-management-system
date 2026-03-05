@@ -95,6 +95,7 @@
     flex-direction: column;
   }
 
+
   .board-grid>section,
   .board-grid>.stats-card {
     flex: 1 1 100%;
@@ -449,5 +450,19 @@
 @keyframes auth-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes boardSync {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  50% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(100%);
   }
 }

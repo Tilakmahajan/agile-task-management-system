@@ -1,4 +1,4 @@
-<div class="auth-bg flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+<div class="auth-bg flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
   <div class="auth-card">
     <div class="text-center mb-8">
       <h1 class="text-3xl font-bold text-gray-800 mb-2">Create Account</h1>
@@ -83,6 +83,14 @@
       <a routerLink="/login" class="font-medium text-indigo-600 hover:text-indigo-500">
         Sign in
       </a>
+    </div>
+  </div>
+
+  <!-- Loading overlay while creating account -->
+  <div *ngIf="isLoading" class="auth-loading-overlay">
+    <div class="auth-loading-card">
+      <div class="auth-loading-spinner" aria-hidden="true"></div>
+      <p class="auth-loading-text">Creating your account...</p>
     </div>
   </div>
 </div>
