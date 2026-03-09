@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, user, updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification } from '@angular/fire/auth';
+import { Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, user, updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification, signInWithPopup, GoogleAuthProvider } from '@angular/fire/auth';
 import { Router } from '@angular/router';
 import toastr from 'toastr';
 
@@ -144,4 +144,35 @@ export class AuthService {
             throw error;
         }
     }
+
+    async signInWithGoogle(): Promise<void> {
+        try {
+            const provider = new GoogleAuthProvider();
+            // Add additional scopes if needed
+            provider.addScope('profile');
+            provider.addScope('email');
+
+            const credential = await signInWithPopup(this.auth, provider);
+
+            // Google accounts are typically verified by Google, so no need to check emailVerified
+            (toastr as any).success('Login successful!', 'Success');
+            this.router.navigate(['/board']);
+        } catch (error) {
+            console.error('Google Sign-In error:', error);
+            const err = error as { code?: string; message?: string; name?: string };
+            
+            // Handle specific Google sign-in errors
+            if (err.code === 'auth/popup-closed-by-user') {
+                (toastr as any).error('Sign-in popup was closed. Please try again.', 'Cancelled');
+            } else if (err.code === 'auth/account-exists-with-different-credential') {
+                (toastr as any).error('An account already exists with a different sign-in method.', 'Account Exists');
+            } else if (err.code === 'auth/auth-domain-config-required') {
+                (toastr as any).error('Authentication domain not configured. Please contact support.', 'Configuration Error');
+            } else {
+                (toastr as any).error('Failed to sign in with Google. Please try again.', 'Error');
+            }
+            throw error;
+        }
+    }
 }
+

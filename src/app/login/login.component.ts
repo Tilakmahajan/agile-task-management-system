@@ -27,6 +27,9 @@ export class LoginComponent {
     isResetting = false;
     resetSuccess = false;
 
+    // Google Sign-In state
+    isGoogleLoading = false;
+
     private authService = inject(AuthService);
     private cdr = inject(ChangeDetectorRef);
     private loadingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -219,6 +222,24 @@ export class LoginComponent {
         } finally {
             this.isResetting = false;
             this.closeForgotModal(); // always close — toastr provides success/error feedback
+        }
+    }
+
+    async onGoogleSignIn(): Promise<void> {
+        // Clear previous errors
+        this.emailError = '';
+        this.passwordError = '';
+        this.errorMsg = '';
+
+        this.isGoogleLoading = true;
+        try {
+            await this.authService.signInWithGoogle();
+        } catch (err: any) {
+            console.log('Caught error in onGoogleSignIn:', err);
+            // Error is already handled in authService
+        } finally {
+            this.isGoogleLoading = false;
+            this.cdr.detectChanges();
         }
     }
 }
