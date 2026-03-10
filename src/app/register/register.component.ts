@@ -18,6 +18,8 @@ export class RegisterComponent {
     confirmPassword = '';
     errorMsg = '';
     isLoading = false;
+    showPassword = false;
+    showConfirmPassword = false;
 
     // Validation error messages
     fullNameError = '';
@@ -26,13 +28,13 @@ export class RegisterComponent {
     confirmPasswordError = '';
 
     private authService = inject(AuthService);
-    
+
     // Email validation regex
     private emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
+
     // Minimum password length
     private minPasswordLength = 6;
-    
+
     // Minimum full name length
     private minFullNameLength = 2;
 
@@ -41,7 +43,7 @@ export class RegisterComponent {
         this.emailError = '';
         this.passwordError = '';
         this.confirmPasswordError = '';
-        
+
         let isValid = true;
 
         // Validate full name
@@ -92,7 +94,7 @@ export class RegisterComponent {
         this.errorMsg = '';
         this.isLoading = true;
         try {
-            await this.authService.register(this.email.trim(), this.password);
+            await this.authService.register(this.email.trim(), this.password, this.fullName.trim());
         } catch (err: any) {
             // Provide user-friendly error messages
             const errorCode = err.code || '';
@@ -110,6 +112,8 @@ export class RegisterComponent {
             } else {
                 this.errorMsg = err.message || 'Registration failed. Please try again.';
             }
+        } finally {
+            // Always reset loading — prevents the form from getting permanently stuck
             this.isLoading = false;
         }
     }

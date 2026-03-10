@@ -33,7 +33,7 @@ export class TaskBoard implements OnInit, OnDestroy {
 
   private boardSubscription: Subscription | null = null;
   private authSubscription: Subscription | null = null;
-  private isLoadingFromFirestore = false;
+  isLoadingFromFirestore = false;
   private isSyncingToFirestore = false;
   private currentUserId: string | null = null;
   private boardInitToken = 0;
@@ -196,60 +196,6 @@ export class TaskBoard implements OnInit, OnDestroy {
     this.firestoreService.unsubscribeFromBoard();
   }
 
-  private mockApiCheck(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', payload?: { task?: Task; columnId?: string }): Promise<{ status: number; message: string; method: string; data?: any }> {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        let responseData: any = {};
-        let message = 'Success';
-        let status = 200;
-
-        if (payload?.task) {
-          responseData.task = payload.task;
-        }
-
-        if (payload?.columnId) {
-          const column = this.getColumnById(payload.columnId);
-          if (column) {
-            responseData.column = {
-              id: column.id,
-              title: column.title,
-              statusLabel: column.statusLabel,
-              accent: column.accent,
-              isDefault: column.isDefault
-            };
-          }
-        }
-
-        switch (method) {
-          case 'GET':
-            message = 'Data retrieved successfully';
-            break;
-          case 'POST':
-            message = 'Resource created successfully';
-            status = 201; // Created
-            break;
-          case 'PUT':
-            message = 'Resource replaced successfully';
-            break;
-          case 'PATCH':
-            message = 'Resource updated successfully';
-            break;
-          case 'DELETE':
-            message = 'Resource deleted successfully';
-            // convention for DELETE is often no body, but returning the deleted item is okay in mock
-            break;
-        }
-
-        resolve({
-          status,
-          message,
-          method,
-          data: Object.keys(responseData).length > 0 ? responseData : undefined
-        });
-      }, 100);
-    });
-  }
-
   async logout(): Promise<void> {
     if (this.isLoggingOut) return;
 
@@ -394,10 +340,6 @@ export class TaskBoard implements OnInit, OnDestroy {
         const arr = this.getColumnTasks(this.editContext.columnId);
         arr[this.editContext.index] = { ...t, title: t.title.trim(), description: t.description?.trim() ?? '' };
         (toastr as any).success('Task updated successfully!', 'Success');
-
-        // Pass the updated task and column ID to mockApiCheck with PUT action
-        const result = await this.mockApiCheck('PUT', { task: arr[this.editContext.index], columnId: this.editContext.columnId });
-        console.log('Task saved (PUT):', JSON.stringify(result, null, 2));
       } else {
         const targetColumn = this.getColumnById(this.addToColumnId);
         if (!targetColumn) {
@@ -415,10 +357,6 @@ export class TaskBoard implements OnInit, OnDestroy {
         };
         targetColumn.tasks.push(newTask);
         (toastr as any).success('Task added successfully!', 'Success');
-
-        // Pass the new task and column ID to mockApiCheck with POST action
-        const result = await this.mockApiCheck('POST', { task: newTask, columnId: this.addToColumnId });
-        console.log('Task saved (POST):', JSON.stringify(result, null, 2));
       }
 
       if (this.priorityFilter !== 'All' && t.priority !== this.priorityFilter) {
@@ -472,11 +410,6 @@ export class TaskBoard implements OnInit, OnDestroy {
         const deletedTask = arr[index];
         arr.splice(index, 1);
         this.saveToStorage();
-
-        // Log delete action with task info and column ID
-        const result = await this.mockApiCheck('DELETE', { task: deletedTask, columnId });
-        console.log('Task deleted (DELETE):', JSON.stringify(result, null, 2));
-
         (toastr as any).warning('Task has been deleted!', 'Alert');
       }
     } catch (error) {
@@ -693,10 +626,6 @@ export class TaskBoard implements OnInit, OnDestroy {
         }
       }
 
-      // Simulate a PATCH request for moving a task
-      const result = await this.mockApiCheck('PATCH', { task: updatedTask, columnId: targetColumnId });
-      console.log('Task moved (PATCH):', JSON.stringify(result, null, 2));
-
       this.saveToStorage();
     } catch (error) {
       console.error('Error moving task:', error);
@@ -748,10 +677,6 @@ export class TaskBoard implements OnInit, OnDestroy {
       if (targetCol && sourceColumnId !== targetColumnId) {
         (toastr as any).success(`Task moved to ${targetCol.title}`, 'Success');
       }
-
-      // Simulate a PATCH request for moving a task
-      const result = await this.mockApiCheck('PATCH', { task: updatedTask, columnId: targetColumnId });
-      console.log('Task moved (PATCH):', JSON.stringify(result, null, 2));
 
       this.saveToStorage();
     } catch (error) {
@@ -874,9 +799,8 @@ export class TaskBoard implements OnInit, OnDestroy {
     }
   }
 
-  async checkTaskSaved(): Promise<{ status: number; message: string; task?: Task }> {
-    const result = await this.mockApiCheck('GET');
-    return { status: 200, message: 'Task saved to database successfully', task: result.data?.task };
+  async checkTaskSaved(): Promise<{ status: number; message: string }> {
+    return { status: 200, message: 'Task saved to database successfully' };
   }
 
   private normalizeColumn(column: Partial<BoardColumn>, index: number): BoardColumn {

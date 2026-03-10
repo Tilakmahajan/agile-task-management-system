@@ -20,16 +20,21 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
 
   profileForm!: FormGroup;
   isLoading = false;
+  userEmail = '';
+  showCurrentPassword = false;
+  showNewPassword = false;
+  showConfirmPassword = false;
   private authSubscription: Subscription | null = null;
   private currentDisplayName = '';
 
   ngOnInit(): void {
     this.initForm();
 
-    // Subscribe to auth state to populate current name
+    // Subscribe to auth state to populate current name and email
     this.authSubscription = this.authService.user$.subscribe(user => {
       if (user) {
         this.currentDisplayName = user.displayName || '';
+        this.userEmail = user.email || '';
         this.profileForm.patchValue({
           displayName: this.currentDisplayName
         });
@@ -54,9 +59,20 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
   private initForm(): void {
     this.profileForm = this.fb.group({
       displayName: ['', [Validators.required, Validators.maxLength(50)]],
+      currentPassword: [''],
       newPassword: ['', [Validators.minLength(6)]],
       confirmPassword: ['']
-    }, { validators: this.passwordMatchValidator });
+    }, { validators: [this.passwordMatchValidator, this.currentPasswordRequiredValidator] });
+  }
+
+  private currentPasswordRequiredValidator(control: AbstractControl): ValidationErrors | null {
+    const current = control.get('currentPassword')?.value;
+    const newPass = control.get('newPassword')?.value;
+
+    if (newPass && !current) {
+      return { currentPasswordRequired: true };
+    }
+    return null;
   }
 
   private passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
@@ -79,6 +95,7 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
     const formVals = this.profileForm.value;
     const newName = formVals.displayName?.trim();
     const newPassword = formVals.newPassword;
+    const currentPassword = formVals.currentPassword;
 
     try {
       let isNameUpdated = false;
@@ -93,14 +110,16 @@ export class ProfileEditComponent implements OnInit, OnDestroy {
 
       // Update password if provided
       if (newPassword) {
-        await this.authService.updateUserPassword(newPassword);
+        await this.authService.updateUserPassword(currentPassword, newPassword);
         isPasswordUpdated = true;
 
         // Clear password fields after success
         this.profileForm.patchValue({
+          currentPassword: '',
           newPassword: '',
           confirmPassword: ''
         });
+        this.profileForm.get('currentPassword')?.markAsPristine();
         this.profileForm.get('newPassword')?.markAsPristine();
         this.profileForm.get('confirmPassword')?.markAsPristine();
       }
