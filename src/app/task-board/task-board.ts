@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router';
 import toastr from 'toastr';
 import { AuthService } from '../services/auth.service';
 import { FirestoreService, BoardColumn, Task } from '../services/firestore.service';
+import { AnalyticsService } from '../services/analytics.service';
 import { Subscription } from 'rxjs';
 
 export type { Task };
@@ -29,6 +30,7 @@ const STORAGE_KEY = 'agile-task-board';
 export class TaskBoard implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private firestoreService = inject(FirestoreService);
+  private analyticsService = inject(AnalyticsService);
   user$ = this.authService.user$;
 
   private boardSubscription: Subscription | null = null;
@@ -745,6 +747,8 @@ export class TaskBoard implements OnInit, OnDestroy {
     try {
       localStorage.setItem(this.getStorageKey(), JSON.stringify({ columns: this.columns }));
       this.saveToFirestore();
+      // Update analytics when tasks change
+      this.analyticsService.updateTaskAnalytics(this.columns);
     } catch {
       // ignore storage issues
     }
