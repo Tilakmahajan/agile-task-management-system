@@ -1,245 +1,309 @@
 <div class="analytics-bg min-h-screen">
+    <!-- Loading State -->
+    @if (isLoading) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm">
+            <div class="text-center">
+                <div class="relative w-24 h-24 mx-auto mb-4">
+                    <div class="absolute inset-0 rounded-full border-4 border-indigo-100"></div>
+                    <div class="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
+                    <div class="absolute inset-2 rounded-full border-2 border-purple-100"></div>
+                </div>
+                <p class="text-indigo-600 font-semibold text-lg animate-pulse">Loading your analytics...</p>
+                <p class="text-indigo-400 text-sm mt-2">Preparing dashboard</p>
+            </div>
+        </div>
+    }
+
     <!-- Header -->
-    <header class="analytics-header">
+    <header class="glass-header-analytics">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-4">
-                    <a routerLink="/board" class="back-btn">
+                    <a routerLink="/board" class="back-btn-analytics">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
                         Back to Board
                     </a>
-                    <h1 class="analytics-title">Analytics Dashboard</h1>
+                    <div class="flex items-center gap-3">
+                        <div class="analytics-icon-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                        <h1 class="analytics-title">Analytics Dashboard</h1>
+                    </div>
                 </div>
-                <div class="text-sm text-gray-500">
-                    {{ currentDate | date:'fullDate' }}
+                <div class="flex items-center gap-4">
+                    <div class="connection-status" [class.connected]="connectionStatus === 'connected'" [class.disconnected]="connectionStatus === 'disconnected'">
+                        <span class="status-dot"></span>
+                        <span class="status-text">
+                            @if (connectionStatus === 'connected') {
+                                Live
+                            } @else if (connectionStatus === 'connecting') {
+                                Connecting...
+                            } @else {
+                                Offline
+                            }
+                        </span>
+                    </div>
+                    <div class="text-sm text-neutral-500 bg-white/60 px-3 py-1.5 rounded-lg">
+                        {{ currentDate | date:'mediumDate' }}
+                    </div>
                 </div>
             </div>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Loading State -->
-        <div *ngIf="isLoading" class="flex items-center justify-center h-64">
-            <div class="text-center">
-                <div class="loading-spinner mx-auto mb-4"></div>
-                <p class="text-gray-500">Loading analytics...</p>
+        <!-- Welcome Section -->
+        <div class="welcome-card-analytics mb-8">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-neutral-800">{{ getGreeting() }}!</h2>
+                    <p class="text-neutral-600 mt-1">Here's your real-time task management overview</p>
+                </div>
+                <div class="live-counter">
+                    <span class="counter-label">Live Tasks</span>
+                    <span class="counter-value">{{ animatedTotal }}</span>
+                </div>
             </div>
         </div>
 
-        <!-- Main Content -->
-        <div *ngIf="!isLoading">
-            <!-- Welcome Section -->
-            <div class="welcome-card mb-8">
-                <h2 class="text-2xl font-bold text-gray-800">{{ getGreeting() }}!</h2>
-                <p class="text-gray-600 mt-1">Here's your task management overview</p>
-            </div>
-
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <!-- Total Tasks -->
-                <div class="stat-card">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="stat-label">Total Tasks</p>
-                            <p class="stat-value">{{ taskAnalytics?.totalTasks || 0 }}</p>
-                        </div>
-                        <div class="stat-icon bg-indigo-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
-                        </div>
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Tasks -->
+            <div class="stat-card-analytics stat-card-total">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="stat-label-analytics">Total Tasks</p>
+                        <p class="stat-value-analytics">{{ animatedTotal }}</p>
+                    </div>
+                    <div class="stat-icon-analytics bg-gradient-to-br from-indigo-500 to-purple-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
                     </div>
                 </div>
-
-                <!-- Completed Tasks -->
-                <div class="stat-card">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="stat-label">Completed</p>
-                            <p class="stat-value text-green-600">{{ taskAnalytics?.completedTasks || 0 }}</p>
-                        </div>
-                        <div class="stat-icon bg-green-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
+                <div class="stat-footer">
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-fill gradient-indigo" [style.width.%]="completionRate"></div>
                     </div>
-                </div>
-
-                <!-- In Progress -->
-                <div class="stat-card">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="stat-label">In Progress</p>
-                            <p class="stat-value text-amber-600">{{ taskAnalytics?.inProgressTasks || 0 }}</p>
-                        </div>
-                        <div class="stat-icon bg-amber-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- To Do -->
-                <div class="stat-card">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="stat-label">To Do</p>
-                            <p class="stat-value text-blue-600">{{ taskAnalytics?.todoTasks || 0 }}</p>
-                        </div>
-                        <div class="stat-icon bg-blue-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                            </svg>
-                        </div>
-                    </div>
+                    <span class="text-xs font-semibold text-indigo-600">{{ completionRate }}% completed</span>
                 </div>
             </div>
 
-            <!-- Charts Section -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <!-- Task Distribution Chart -->
-                <div class="chart-card">
-                    <h3 class="chart-title">Task Status Distribution</h3>
-                    <div class="chart-content">
-                        <div class="bar-chart">
-                            <!-- To Do Bar -->
-                            <div class="bar-item">
-                                <div class="bar-label">
-                                    <span class="text-sm font-medium text-gray-700">To Do</span>
-                                    <span class="text-sm text-gray-500">{{ todoRate }}%</span>
-                                </div>
-                                <div class="bar-track">
-                                    <div class="bar-fill bg-blue-500" [style.width.%]="todoRate"></div>
-                                </div>
-                                <span class="bar-value">{{ taskAnalytics?.todoTasks || 0 }}</span>
-                            </div>
+            <!-- Completed Tasks -->
+            <div class="stat-card-analytics stat-card-completed">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="stat-label-analytics">Completed</p>
+                        <p class="stat-value-analytics text-green-600">{{ animatedCompleted }}</p>
+                    </div>
+                    <div class="stat-icon-analytics bg-gradient-to-br from-green-500 to-emerald-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-footer">
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-fill gradient-green" [style.width.%]="completionRate"></div>
+                    </div>
+                    <span class="text-xs font-semibold text-green-600">{{ completionRate }}% rate</span>
+                </div>
+            </div>
 
-                            <!-- In Progress Bar -->
-                            <div class="bar-item">
-                                <div class="bar-label">
-                                    <span class="text-sm font-medium text-gray-700">In Progress</span>
-                                    <span class="text-sm text-gray-500">{{ progressRate }}%</span>
-                                </div>
-                                <div class="bar-track">
-                                    <div class="bar-fill bg-amber-500" [style.width.%]="progressRate"></div>
-                                </div>
-                                <span class="bar-value">{{ taskAnalytics?.inProgressTasks || 0 }}</span>
-                            </div>
+            <!-- In Progress -->
+            <div class="stat-card-analytics stat-card-progress">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="stat-label-analytics">In Progress</p>
+                        <p class="stat-value-analytics text-amber-600">{{ animatedInProgress }}</p>
+                    </div>
+                    <div class="stat-icon-analytics bg-gradient-to-br from-amber-500 to-orange-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-footer">
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-fill gradient-amber" [style.width.%]="progressRate"></div>
+                    </div>
+                    <span class="text-xs font-semibold text-amber-600">{{ progressRate }}% active</span>
+                </div>
+            </div>
 
-                            <!-- Completed Bar -->
-                            <div class="bar-item">
-                                <div class="bar-label">
-                                    <span class="text-sm font-medium text-gray-700">Completed</span>
-                                    <span class="text-sm text-gray-500">{{ completionRate }}%</span>
-                                </div>
-                                <div class="bar-track">
-                                    <div class="bar-fill bg-green-500" [style.width.%]="completionRate"></div>
-                                </div>
-                                <span class="bar-value">{{ taskAnalytics?.completedTasks || 0 }}</span>
+            <!-- To Do -->
+            <div class="stat-card-analytics stat-card-todo">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="stat-label-analytics">To Do</p>
+                        <p class="stat-value-analytics text-blue-600">{{ animatedTodo }}</p>
+                    </div>
+                    <div class="stat-icon-analytics bg-gradient-to-br from-blue-500 to-cyan-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-footer">
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-fill gradient-blue" [style.width.%]="todoRate"></div>
+                    </div>
+                    <span class="text-xs font-semibold text-blue-600">{{ todoRate }}% pending</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- Task Distribution - Simple Visual -->
+            <div class="chart-card-analytics lg:col-span-1">
+                <h3 class="chart-title-analytics">Task Distribution</h3>
+                <div class="chart-content-analytics">
+                    <!-- Large circular progress -->
+                    <div class="flex justify-center mb-6">
+                        <div class="relative w-40 h-40">
+                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                <!-- Background -->
+                                <path class="text-gray-200" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"/>
+                                <!-- Blue (To Do) -->
+                                <path [attr.d]="getArcPath(todoRate)" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+                                <!-- Amber (In Progress) -->
+                                <path [attr.d]="getArcPath(progressRate, todoRate)" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>
+                                <!-- Green (Completed) -->
+                                <path [attr.d]="getArcPath(completionRate, todoRate + progressRate)" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round"/>
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span class="text-3xl font-black text-neutral-800">{{ animatedTotal }}</span>
+                                <span class="text-xs text-neutral-500">Total</span>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Priority Distribution -->
-                <div class="chart-card">
-                    <h3 class="chart-title">Priority Distribution</h3>
-                    <div class="priority-chart">
-                        <div *ngFor="let priority of priorityData" class="priority-item">
-                            <div class="priority-header">
-                                <div class="priority-info">
-                                    <span class="priority-dot" [style.background-color]="priority.color"></span>
-                                    <span class="priority-label">{{ priority.label }}</span>
-                                </div>
-                                <span class="priority-count">{{ priority.value }} ({{ priority.percentage }}%)</span>
+                    
+                    <!-- Legend -->
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between px-3 py-2 bg-blue-50 rounded-lg">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                                <span class="text-sm font-medium">To Do</span>
                             </div>
-                            <div class="priority-bar-track">
-                                <div class="priority-bar-fill" 
+                            <span class="font-bold text-blue-600">{{ animatedTodo }}</span>
+                        </div>
+                        <div class="flex items-center justify-between px-3 py-2 bg-amber-50 rounded-lg">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                                <span class="text-sm font-medium">In Progress</span>
+                            </div>
+                            <span class="font-bold text-amber-600">{{ animatedInProgress }}</span>
+                        </div>
+                        <div class="flex items-center justify-between px-3 py-2 bg-green-50 rounded-lg">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                                <span class="text-sm font-medium">Completed</span>
+                            </div>
+                            <span class="font-bold text-green-600">{{ animatedCompleted }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Priority Distribution -->
+            <div class="chart-card-analytics lg:col-span-2">
+                <h3 class="chart-title-analytics">Priority Analysis</h3>
+                <div class="priority-chart-analytics">
+                    @for (priority of priorityData; track priority.label) {
+                        <div class="priority-item-analytics">
+                            <div class="priority-header-analytics">
+                                <div class="flex items-center gap-3">
+                                    <span class="priority-dot-analytics" [style.background-color]="priority.color"></span>
+                                    <span class="priority-label-analytics">{{ priority.label }} Priority</span>
+                                </div>
+                                <span class="priority-count-analytics" [style.color]="priority.color">{{ priority.value }}</span>
+                            </div>
+                            <div class="priority-bar-track-analytics">
+                                <div class="priority-bar-fill-analytics" 
                                     [style.width.%]="priority.percentage"
                                     [style.background-color]="priority.color">
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Column Breakdown -->
-            <div class="chart-card mb-8">
-                <h3 class="chart-title">Tasks by Column</h3>
-                <div class="column-grid">
-                    <div *ngFor="let column of columnData" class="column-card">
-                        <div class="column-header" [style.border-left-color]="column.color">
-                            <span class="column-name">{{ column.label }}</span>
-                            <span class="column-count">{{ column.value }}</span>
-                        </div>
-                        <div class="column-visual">
-                            <div class="column-bar" 
-                                [style.height.%]="getColumnHeightPercent(column.value)"
-                                [style.background-color]="column.color">
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-xs font-semibold" [style.color]="priority.color">{{ priority.percentage }}%</span>
                             </div>
                         </div>
-                    </div>
+                    }
                 </div>
-            </div>
-
-            <!-- User Activity Summary -->
-            <div *ngIf="userActivity" class="chart-card">
-                <h3 class="chart-title">Your Activity Summary</h3>
-                <div class="activity-grid">
-                    <div class="activity-item">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        <div class="activity-content">
-                            <span class="activity-label">Name</span>
-                            <span class="activity-value">{{ userActivity.displayName || 'Not set' }}</span>
-                        </div>
-                    </div>
-                    <div class="activity-item">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        <div class="activity-content">
-                            <span class="activity-label">Email</span>
-                            <span class="activity-value">{{ userActivity.email }}</span>
-                        </div>
-                    </div>
-                    <div class="activity-item">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        <div class="activity-content">
-                            <span class="activity-label">Total Logins</span>
-                            <span class="activity-value">{{ userActivity.totalLogins }}</span>
-                        </div>
-                    </div>
-                    <div class="activity-item">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div class="activity-content">
-                            <span class="activity-label">Last Login</span>
-                            <span class="activity-value">{{ formatDate(userActivity.lastLogin) }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Empty State -->
-            <div *ngIf="!hasTasks()" class="empty-state">
-                <svg xmlns="http://www.w3.org/2000/svg" class="empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <h3 class="empty-title">No Data Yet</h3>
-                <p class="empty-text">Start creating tasks to see your analytics here!</p>
-                <a routerLink="/board" class="empty-btn">Go to Board</a>
             </div>
         </div>
+
+        <!-- User Profile -->
+        @if (userActivity) {
+            <div class="chart-card-analytics mt-8">
+                <h3 class="chart-title-analytics">Your Profile</h3>
+                <div class="activity-grid-analytics">
+                    <div class="activity-item-analytics">
+                        <div class="activity-icon-analytics bg-indigo-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                        <div class="activity-content-analytics">
+                            <span class="activity-label-analytics">Name</span>
+                            <span class="activity-value-analytics">{{ userActivity.displayName || 'Not set' }}</span>
+                        </div>
+                    </div>
+                    <div class="activity-item-analytics">
+                        <div class="activity-icon-analytics bg-blue-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div class="activity-content-analytics">
+                            <span class="activity-label-analytics">Email</span>
+                            <span class="activity-value-analytics">{{ userActivity.email }}</span>
+                        </div>
+                    </div>
+                    <div class="activity-item-analytics">
+                        <div class="activity-icon-analytics bg-green-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        </div>
+                        <div class="activity-content-analytics">
+                            <span class="activity-label-analytics">Total Logins</span>
+                            <span class="activity-value-analytics">{{ userActivity.totalLogins }}</span>
+                        </div>
+                    </div>
+                    <div class="activity-item-analytics">
+                        <div class="activity-icon-analytics bg-purple-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="activity-content-analytics">
+                            <span class="activity-label-analytics">Last Login</span>
+                            <span class="activity-value-analytics">{{ formatDate(userActivity.lastLogin) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Empty State -->
+        @if (!hasTasks()) {
+            <div class="empty-state-analytics">
+                <div class="empty-icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="empty-icon-analytics" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                </div>
+                <h3 class="empty-title-analytics">No Tasks Yet</h3>
+                <p class="empty-text-analytics">Create tasks to see your analytics!</p>
+                <a routerLink="/board" class="empty-btn-analytics">Create Your First Task</a>
+            </div>
+        }
     </main>
 </div>
 
