@@ -6,6 +6,7 @@ import toastr from 'toastr';
 import { AuthService } from '../services/auth.service';
 import { FirestoreService, BoardColumn, Task } from '../services/firestore.service';
 import { AnalyticsService } from '../services/analytics.service';
+import { CloudinaryService } from '../services/cloudinary.service';
 import { Subscription } from 'rxjs';
 
 export type { Task };
@@ -28,10 +29,84 @@ const STORAGE_KEY = 'agile-task-board';
   styleUrl: './task-board.css',
 })
 export class TaskBoard implements OnInit, OnDestroy {
+  readonly cloudinaryService = inject(CloudinaryService);
   private authService = inject(AuthService);
   private firestoreService = inject(FirestoreService);
   private analyticsService = inject(AnalyticsService);
   user$ = this.authService.user$;
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      if (this.cloudinaryService.isImage(file)) {
+        this.revokeSelectedFilePreview();
+        this.selectedFile = file;
+        this.selectedFilePreviewUrl = this.cloudinaryService.getFilePreviewUrl(file);
+        this.uploadProgress = 0;
+        this.uploadAttachment();
+      } else {
+        (toastr as any).error('Please select an image file (JPG, PNG, GIF)', 'Invalid file');
+        this.selectedFile = null;
+        this.revokeSelectedFilePreview();
+        this.uploadProgress = 0;
+      }
+    }
+  }
+
+  async uploadAttachment(): Promise<void> {
+    if (!this.selectedFile) return;
+
+    this.uploadingAttachment = true;
+    this.uploadProgress = 0;
+
+    this.cloudinaryService.uploadFile(this.selectedFile).subscribe({
+      next: (url) => {
+        this.formTask.attachmentUrl = url;
+        this.uploadProgress = 100;
+        (toastr as any).success('Image uploaded successfully!', 'Upload Complete');
+        this.clearSelectedFile(false);
+      },
+      error: (err) => {
+        console.error('Upload error:', err);
+        (toastr as any).error(err.message || 'Upload failed', 'Upload Error');
+        this.uploadingAttachment = false;
+        this.clearSelectedFile();
+      },
+      complete: () => {
+        this.uploadingAttachment = false;
+      }
+    });
+  }
+
+  viewAttachment(task: Task): void {
+    if (task.attachmentUrl) {
+      this.openImagePopup(task.attachmentUrl);
+    }
+  }
+
+  openImagePopup(url: string | undefined | null): void {
+    if (!url) return;
+    this.popupImageUrl = url;
+    this.showImagePopup = true;
+  }
+
+  closeImagePopup(): void {
+    this.showImagePopup = false;
+    this.popupImageUrl = '';
+  }
+
+  reviewFormAttachment(): void {
+    const url = this.selectedFilePreviewUrl ?? this.formTask.attachmentUrl ?? '';
+    if (url) {
+      this.openImagePopup(url);
+    }
+  }
+
+  removeAttachment(): void {
+    this.formTask.attachmentUrl = '';
+    this.clearSelectedFile();
+  }
 
   private boardSubscription: Subscription | null = null;
   private authSubscription: Subscription | null = null;
@@ -44,6 +119,14 @@ export class TaskBoard implements OnInit, OnDestroy {
   isSaving = false;
   isLoggingOut = false;
   lastSyncTime: Date | null = null;
+
+  // File attachment
+  selectedFile: File | null = null;
+  selectedFilePreviewUrl: string | null = null;
+  uploadingAttachment = false;
+  uploadProgress = 0;
+  showImagePopup = false;
+  popupImageUrl = '';
 
   priorityFilter: PriorityFilter = 'All';
   sortMode: SortMode = 'manual';
@@ -79,6 +162,7 @@ export class TaskBoard implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.cleanupFirestore();
+    this.clearSelectedFile();
     if (this.authSubscription) {
       this.authSubscription.unsubscribe();
       this.authSubscription = null;
@@ -338,6 +422,11 @@ export class TaskBoard implements OnInit, OnDestroy {
     }
 
     try {
+      if (this.uploadingAttachment) {
+        (toastr as any).info('Please wait for upload to complete', 'Uploading...');
+        return;
+      }
+
       if (this.isEditMode && this.editContext) {
         const arr = this.getColumnTasks(this.editContext.columnId);
         arr[this.editContext.index] = { ...t, title: t.title.trim(), description: t.description?.trim() ?? '' };
@@ -378,6 +467,8 @@ export class TaskBoard implements OnInit, OnDestroy {
     this.isEditMode = false;
     this.editContext = null;
     this.formTask = this.createEmptyTask();
+    this.clearSelectedFile();
+    this.uploadingAttachment = false;
   }
 
   confirmDeleteTask(columnId: string, taskId: string, event: Event): void {
@@ -864,6 +955,7 @@ export class TaskBoard implements OnInit, OnDestroy {
       priority: 'Medium',
       dueDate: '',
       statusLabel: 'Backlog',
+      attachmentUrl: '',
     };
   }
 
@@ -875,6 +967,7 @@ export class TaskBoard implements OnInit, OnDestroy {
       priority: task.priority === 'High' || task.priority === 'Medium' || task.priority === 'Low' ? task.priority : 'Medium',
       dueDate: task.dueDate ?? '',
       statusLabel: task.statusLabel ?? 'Backlog',
+      attachmentUrl: task.attachmentUrl ?? '',
     };
   }
 
@@ -954,5 +1047,20 @@ export class TaskBoard implements OnInit, OnDestroy {
     this.dropTargetColumnId = null;
     this.draggingColumnId = null;
     this.dropTargetColumnPlacement = null;
+  }
+
+  private clearSelectedFile(resetProgress: boolean = true): void {
+    this.selectedFile = null;
+    this.revokeSelectedFilePreview();
+    if (resetProgress) {
+      this.uploadProgress = 0;
+    }
+  }
+
+  private revokeSelectedFilePreview(): void {
+    if (this.selectedFilePreviewUrl) {
+      URL.revokeObjectURL(this.selectedFilePreviewUrl);
+      this.selectedFilePreviewUrl = null;
+    }
   }
 }

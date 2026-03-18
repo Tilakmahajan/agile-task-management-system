@@ -10,6 +10,7 @@ export interface Task {
   priority: 'High' | 'Medium' | 'Low';
   dueDate: string;
   statusLabel: string;
+  attachmentUrl?: string;
 }
 
 export interface BoardColumn {
@@ -76,12 +77,9 @@ export class FirestoreService {
 
     // Create a promise that will resolve when we get the first snapshot
     return new Promise((resolve) => {
-      // Set a timeout to resolve even if no data (after 2 seconds)
+      // Set a timeout to resolve safely (after 2 seconds)
       const timeoutId = setTimeout(() => {
-        if (this.boardSubject.value.length === 0) {
-          // No data received, resolve with empty to let caller handle default columns
-          resolve([]);
-        }
+        resolve(this.boardSubject.value || []);
       }, 2000);
 
       this.unsubscribe = onSnapshot(

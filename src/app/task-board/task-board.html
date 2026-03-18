@@ -1,14 +1,14 @@
 <div class="task-board-bg">
   <!-- Slim Firestore syncing bar — unobtrusive, board content stays visible -->
-  @if (isLoadingFromFirestore) {
-    <div class="fixed top-0 left-0 right-0 z-50 h-1 bg-indigo-100 overflow-hidden">
+@if (isLoadingFromFirestore) {
+    <div class="firestore-progress-bar fixed top-0 left-0 right-0 z-50 h-1 bg-indigo-100 overflow-hidden">
       <div class="h-full bg-indigo-500 animate-pulse w-full" style="animation: boardSync 1.5s ease-in-out infinite;">
       </div>
     </div>
   }
   <div class="task-board-content min-h-screen px-3 py-6 sm:px-4 sm:py-8 text-neutral-800">
     <div class="max-w-6xl mx-auto space-y-6 sm:space-y-8">
-      <div class="glass-header flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-4 sm:p-5 mb-4 rounded-3xl">
+      <div class="glass-header sticky top-4 z-40 bg-white/30 backdrop-blur-xl border border-white/40 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-4 sm:p-5 mb-4 rounded-3xl transition-all duration-300">
         <!-- Left Section: Branding & Search -->
         <div class="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 flex-1 min-w-0">
           <div class="flex items-center gap-3 group cursor-default shrink-0">
@@ -245,10 +245,11 @@
               }
               @for (task of getFilteredTasks(column); track task.id) {
                 <article
-                  class="task-card task-card-fixed group cursor-grab active:cursor-grabbing rounded-lg border border-neutral-200 bg-neutral-50/50 p-3 transition hover:border-neutral-300 hover:shadow-sm h-[140px] flex flex-col justify-between overflow-hidden"
+                  class="task-card task-card-fixed group cursor-grab active:cursor-grabbing rounded-lg border border-neutral-200 bg-neutral-50/50 p-3 transition hover:border-neutral-300 hover:shadow-sm flex flex-col overflow-hidden"
                   [class.is-dragging]="draggingTaskId === task.id"
-                  [class.drop-before]="dropTargetTaskId === task.id && dropTargetPlacement === 'before'"
+[class.drop-before]="dropTargetTaskId === task.id && dropTargetPlacement === 'before'"
                   [class.drop-after]="dropTargetTaskId === task.id && dropTargetPlacement === 'after'"
+                  [class.drop-zone-active]="dropTargetTaskId === task.id"
                   draggable="true"
                   (dragstart)="onDragStart(column.id, task, $event); $event.stopPropagation()"
                   (dragover)="onTaskDragOver(task.id, $event)"
@@ -266,6 +267,19 @@
                   <p class="mt-1 text-xs text-neutral-500 task-card-desc line-clamp-2">
                     {{ task.description }}
                   </p>
+                  @if (task.attachmentUrl) {
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1.5 mt-2 rounded-md border border-neutral-200 bg-white px-2 py-1 text-[11px] font-medium text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-fit"
+                      (click)="viewAttachment(task); $event.stopPropagation()"
+                      title="View attachment"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                      </svg>
+                      View image
+                    </button>
+                  }
                   <div class="mt-2 flex items-center justify-end text-[11px] text-neutral-500 flex-wrap gap-1">
                     <span class="rounded-md bg-neutral-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-neutral-600 shrink-0">
                       {{ task.statusLabel }}
@@ -369,6 +383,61 @@
               class="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 min-h-[44px]"
             />
           </div>
+          <div class="attachment-panel">
+            <div class="flex items-center justify-between gap-3">
+              <label for="task-image" class="block text-xs font-medium text-neutral-600">Task image</label>
+              @if (formTask.attachmentUrl) {
+                <button
+                  type="button"
+                  class="text-xs font-medium text-red-600 hover:text-red-700"
+                  (click)="removeAttachment()"
+                >
+                  Remove image
+                </button>
+              }
+            </div>
+            <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                id="task-image"
+                type="file"
+                accept="image/*"
+                class="attachment-file-input"
+                (change)="onFileSelected($event)"
+              />
+              @if (uploadingAttachment) {
+                <span class="text-xs font-medium text-indigo-600 animate-pulse">Uploading image...</span>
+              }
+            </div>
+            @if (selectedFile) {
+              <p class="mt-2 text-xs text-neutral-500">Selected: {{ selectedFile.name }}</p>
+            }
+            @if (uploadingAttachment || uploadProgress > 0) {
+              <div class="upload-progress mt-3">
+                <div class="upload-progress__bar" [style.width.%]="uploadProgress || 15"></div>
+              </div>
+            }
+            @if (selectedFilePreviewUrl || formTask.attachmentUrl) {
+              <div class="attachment-preview-card mt-3">
+                <img
+                  [src]="selectedFilePreviewUrl || formTask.attachmentUrl"
+                  alt="Task attachment preview"
+                  class="attachment-preview-card__img"
+                />
+                <div class="attachment-preview-card__meta">
+                  <p class="text-sm font-medium text-neutral-800">
+                    {{ selectedFile ? 'Selected image preview' : 'Uploaded image attached' }}
+                  </p>
+                  <button
+                    type="button"
+                    class="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                    (click)="openImagePopup(selectedFilePreviewUrl || formTask.attachmentUrl)"
+                  >
+                    Review image
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
           <div class="flex flex-wrap justify-end gap-2 pt-2">
             <button
               type="button"
@@ -466,6 +535,15 @@
       <div class="auth-loading-card">
         <div class="auth-loading-spinner" aria-hidden="true"></div>
         <p class="auth-loading-text">Signing you out...</p>
+      </div>
+    </div>
+  }
+
+  @if (showImagePopup) {
+    <div class="image-popup-overlay" (click)="closeImagePopup()">
+      <div class="image-popup-container" (click)="$event.stopPropagation()">
+        <button type="button" class="image-popup-close" (click)="closeImagePopup()">Close</button>
+        <img [src]="popupImageUrl" alt="Task attachment" class="image-popup-image" />
       </div>
     </div>
   }
